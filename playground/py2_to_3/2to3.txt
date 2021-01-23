@@ -1,0 +1,4 @@
+2to3 -w -n .
+
+-w flag to enable writeback, which applies the changes to the file
+-n to disable backups，otherwise will generate bak file

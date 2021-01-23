@@ -1,0 +1,16 @@
+# python
+*.pyc
+
+# intellij
+.idea
+
+# git
+.git
+
+# egg
+DaiToolkit.egg-info/
+
+# files
+/DaiToolkit/login.yaml
+/DaiToolkit/crypto.yaml
+
