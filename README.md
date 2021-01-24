@@ -1,5 +1,5 @@
 # AutoDai
-老戴的金融小工具库 \
+老戴的金融小工具库 (python 3) \
 雪球ID：戴老师爱学习  &nbsp; &nbsp; 金融文献翻译：点拾投资 / 杰晶维基
 
 ### Financial Analysis

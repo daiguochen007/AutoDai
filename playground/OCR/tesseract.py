@@ -11,7 +11,7 @@ import cv2
 import os
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
-image_path = r"C:\Users\Dai\Desktop\investment\Git\AutoDai_py3\playground\OCR\autoemail.png"
+image_path = r"C:\Users\Dai\Desktop\investment\Git\AutoDai\playground\OCR\autoemail.png"
 
 def img_grayscale(img, reverse = False):
     if reverse:
