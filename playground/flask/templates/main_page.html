@@ -36,8 +36,9 @@
   <br>
   {{ my_list[0] + my_list.1 }}
   <hr>
-  <input type = "button" onclick = "sayHello()" value = "第一个交互" />
-  <br>
+  <input type = "button" onclick = "sayHello()" value = "一个js交互" />
+  <hr>
+  <button id="apidata" class="float-left submit-button" >整个API试试？</button>
   <button id="upload_pics" class="float-left submit-button" >传个图片试试？</button>
   <button id="login" class="float-left submit-button" >登录一个试试？</button>
 
@@ -50,6 +51,9 @@
       };
       document.getElementById("sendemail").onclick = function () {
           location.href = "/sendemail";
+      };
+      document.getElementById("apidata").onclick = function () {
+          location.href = "/api";
       };
   </script>
 </body>

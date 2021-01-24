@@ -42,7 +42,8 @@ def main_page():
 
 
 @app.route("/sendemail")
-def index():
+def sendemail():
+    login = tk.read_yaml(tk.PROJECT_CODE_PATH + "/DaiToolkit/login.yaml")["google"]
     msg = Message("This is an automsg from dai's portal [time = " + datetime.now().strftime("%H:%M:%S") + "]",
                   sender=login['user'], recipients=[login['user']])
     msg.body = "Hello Flask message sent from Flask-Mail"
@@ -56,7 +57,7 @@ def page_1():
     price_dict = {}
     for k in seccode_list:
         price_dict[k] = float(tk.ts.get_realtime_quotes(k)["price"][0])
-    return price_dict
+    return {"This is live data from tushare":price_dict}
 
 
 @app.route('/hello/<name>/')
@@ -96,6 +97,13 @@ def uploader():
         f = request.files['file']
         f.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f.filename)))
         return 'file uploaded successfully'
+
+
+@app.route('/api')
+def apidata():
+    res = tk.db_query("SELECT * FROM allsecbasics_ashares limit 100")
+    return res.to_dict()
+
 
 
 if __name__ == '__main__':
