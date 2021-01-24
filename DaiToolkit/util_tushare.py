@@ -8,12 +8,10 @@ import tushare as ts
 
 from DaiToolkit import util_basics
 from DaiToolkit import util_database
-from DaiToolkit import util_readfile
 
 PROJECT_DATA_TUSHARE_PATH = util_basics.PROJECT_DATA_PATH + "/tushare"
-#ts.set_token(util_readfile.read_yaml(util_basics.PROJECT_CODE_PATH + "/DaiToolkit/login.yaml")["tushare"]['token'])
+# ts.set_token(util_readfile.read_yaml(util_basics.PROJECT_CODE_PATH + "/DaiToolkit/login.yaml")["tushare"]['token'])
 pro = ts.pro_api()
-
 
 def tushare_getallsec_basics():
     """
@@ -21,17 +19,37 @@ def tushare_getallsec_basics():
     auto save to folder
     
     这里的市盈率是动态市盈率
+
+    stock_basic
+    输入参数
+    ts_code str N 股票代码
+    list_status str N 上市状态： L上市 D退市 P暂停上市，默认L
+    exchange str N 交易所 SSE上交所 SZSE深交所 HKEX港交所(未上线)
+    is_hs str N 是否沪深港通标的，N否 H沪股通 S深股通
+
+    输出参数
+    ts_code str TS代码
+    symbol str 股票代码
+    name str 股票名称
+    area str 所在地域
+    industry str 所属行业
+    fullname str 股票全称
+    enname str 英文全称
+    market str 市场类型 （主板/中小板/创业板/科创板/CDR）
+    exchange str 交易所代码
+    curr_type str 交易货币
+    list_status str 上市状态： L上市 D退市 P暂停上市
+    list_date str 上市日期
+    delist_date str 退市日期
+    is_hs str 是否沪深港通标的，N否 H沪股通 S深股通
+
     """
     print("Downloading all sec basics from tushare...")
-    df = ts.get_stock_basics()
-    df.reset_index(inplace=True)
-    colmap = {'code': '代码', 'name': '名称', 'industry': '所属行业', 'area': '地区', 'pe': '市盈率', 'outstanding': '流通股本(亿)',
-              'totals': '总股本(亿)', 'totalAssets': '总资产(万)',
-              'liquidAssets': '流动资产', 'fixedAssets': '固定资产', 'reserved': '公积金', 'reservedPerShare': '每股公积金',
-              'esp': '每股收益', 'bvps': '每股净资产',
-              'pb': '市净率', 'timeToMarket': '上市日期', 'undp': '未分利润', 'perundp': '每股未分配', 'rev': '收入同比(%)',
-              'profit': '利润同比(%)', 'gpr': '毛利率(%)',
-              'npr': '净利润率(%)', 'holders': '股东人数'}
+    df = pro.stock_basic(exchange='', list_status='L',
+                         fields='ts_code,symbol,name,fullname,enname,industry,area,industry,market,exchange,curr_type,list_status,list_date,delist_date,is_hs')
+    colmap = {'ts_code': 'TS代码', 'symbol': '代码', 'name': '名称', 'fullname': '股票全称', 'enname': '英文全称',
+              'industry': '所属行业', 'area': '地区', 'market': '市场类型', 'exchange': '交易所代码', 'curr_type': '交易货币',
+              'list_status': '上市状态', 'list_date': '上市日期', 'delist_date': '退市日期', 'is_hs': '沪深港通'}
     df.columns = [colmap[x] for x in df.columns]
     today_date = datetime.datetime.now().strftime("%Y%m%d")
     df["更新时间"] = int(today_date)
@@ -344,4 +362,7 @@ def tusharelocal_get_history(seccode):
     return df
 
 ################################ test
-# tushare_get_history(seccode="601009")
+if __name__ =="__main__":
+    pass
+    # tushare_getallsec_basics()
+    # tushare_get_history(seccode="601009")
