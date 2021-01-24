@@ -1,7 +1,7 @@
 import yaml
 from cryptography.fernet import Fernet
 
-from . import util_readfile
+from DaiToolkit import util_readfile
 
 # key from Fernet.generate_key()
 CRYPTOGRAPHY_KEY = util_readfile.read_yaml_rel_path('crypto.yaml')['key']

@@ -17,14 +17,16 @@ include func:
 """
 import csv
 import os
-import urllib.request, urllib.error, urllib.parse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import pandas as pd
 import xlsxwriter
 
-from . import util_basics
-from . import util_excel
-from . import util_sinafinance
+from DaiToolkit import util_basics
+from DaiToolkit import util_excel
+from DaiToolkit import util_sinafinance
 
 
 def money163_10K_rawdata(seccode):
@@ -36,7 +38,7 @@ def money163_10K_rawdata(seccode):
     for tbl in ["zcfzb", "lrb", "xjllb"]:
         url = "http://quotes.money.163.com/service/" + tbl + "_" + seccode + ".html"
         response = urllib.request.urlopen(url)
-        cr = csv.reader(response)
+        cr = csv.reader(line.decode("gbk") for line in response)
         df = {}
         i = 0
         for row in cr:
@@ -45,16 +47,13 @@ def money163_10K_rawdata(seccode):
         del df[i - 1]
 
         df = pd.DataFrame(df).T
-        # convert to chinese
-        for c in df.columns:
-            df[c] = [x.decode('gb2312').encode('utf-8').strip() for x in df[c]]
         df.columns = df.iloc[0, :]
         df = df.iloc[1:, :-1]
         df.index = list(range(len(df)))
         # replace --
         df = df.replace("--", 0)
         for c in list(df.columns)[1:]:
-            df[c] = [float(x) if x == x else x for x in df[c]]
+            df[c] = [0 if str(x).strip() == '--' else float(x) if x == x else x for x in df[c]]
         res[tbl] = df
         print("get [" + seccode + "_" + tbl + "] finished!")
     return res
@@ -82,9 +81,9 @@ def money163_10K_format_zcfzb(df):
     sum_ass = df.iloc[list(df["报告日期"]).index("资产总计(万元)"):list(df["报告日期"]).index("资产总计(万元)") + 1, :].copy()
 
     liq_lia = df.iloc[tenK_structure["liability"]["liquid liability"][0]:(
-                tenK_structure["liability"]["liquid liability"][1] + 1), :].copy()
+            tenK_structure["liability"]["liquid liability"][1] + 1), :].copy()
     illiq_lia = df.iloc[tenK_structure["liability"]["illiquid liability"][0]:(
-                tenK_structure["liability"]["illiquid liability"][1] + 1), :].copy()
+            tenK_structure["liability"]["illiquid liability"][1] + 1), :].copy()
     sum_lia = df.iloc[list(df["报告日期"]).index("负债合计(万元)"):list(df["报告日期"]).index("负债合计(万元)") + 1, :].copy()
 
     par_equ = df.iloc[tenK_structure["equity"]["parent equity"][0]:(tenK_structure["equity"]["parent equity"][1] + 1),
@@ -143,7 +142,8 @@ def money163_10K_format_lrb(df):
 
     temp = [list(lrb["报告日期"]).index("净利润(万元)") + 1, list(lrb["报告日期"]).index("每股收益") - 1]
     lrb.iloc[temp[0]:temp[1] + 1, 0] = [" " * 4 + x for x in lrb.iloc[temp[0]:temp[1] + 1, 0]]
-    lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0] = [" " * 4 + x for x in lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0]]
+    lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0] = [" " * 4 + x for x in
+                                                       lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0]]
     return lrb
 
 
@@ -243,16 +243,16 @@ def money163_10K_dupont_analysis(df_res):
     df_dupont = df_dupont.T
 
     df_dupont["营业净利润率"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), df_dupont["净利润(万元)"],
-                               df_dupont["营业总收入(万元)"]))
+                                   df_dupont["营业总收入(万元)"]))
     df_dupont["总资产周转率"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), df_dupont["营业总收入(万元)"],
-                               df_dupont["资产总计(万元)"]))
+                                   df_dupont["资产总计(万元)"]))
     df_dupont["资产负债率"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), df_dupont["负债合计(万元)"],
-                              df_dupont["资产总计(万元)"]))
+                                  df_dupont["资产总计(万元)"]))
 
     df_dupont["归属母公司净利润占比"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), df_dupont["归属于母公司所有者的净利润(万元)"],
-                                   df_dupont["净利润(万元)"]))
+                                       df_dupont["净利润(万元)"]))
     df_dupont["归属母公司权益占比"] = list(map(lambda x, y, z: 1.0 - x / (y - z) if y - z != 0 else float("nan"),
-                                  df_dupont["少数股东权益(万元)"], df_dupont["资产总计(万元)"], df_dupont["负债合计(万元)"]))
+                                      df_dupont["少数股东权益(万元)"], df_dupont["资产总计(万元)"], df_dupont["负债合计(万元)"]))
 
     df_dupont["总资产净利润率"] = df_dupont["营业净利润率"] * df_dupont["总资产周转率"]
     df_dupont["权益乘数"] = [1.0 / (1.0 - x) if x != 1 else float("nan") for x in df_dupont["资产负债率"]]
@@ -297,7 +297,7 @@ def money163_10K_zcfzb_analysis(df_res):
     temp = pd.concat([df_res_['zcfzb'].loc[["流动资产合计(万元)"]], df_res_['zcfzb'].loc[["流动负债合计(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["流动比率"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["流动资产合计(万元)"],
-                            temp.loc["流动负债合计(万元)"]))
+                                temp.loc["流动负债合计(万元)"]))
     temp = temp.loc[["流动比率", "流动资产合计(万元)", "流动负债合计(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -308,7 +308,7 @@ def money163_10K_zcfzb_analysis(df_res):
     temp[r"报告日期"] = 0
     temp.loc["营业成本(万元,TTM)"] = temp.loc["营业成本(万元)"].rolling(4).sum()
     temp.loc["存货周转天数(TTM)"] = list(map(lambda x, y: 360.0 * x / y if y != 0 else float("nan"), temp.loc["存货(万元)"],
-                                   temp.loc["营业成本(万元,TTM)"]))
+                                       temp.loc["营业成本(万元,TTM)"]))
     temp = temp.loc[["存货周转天数(TTM)", "存货(万元)", "营业成本(万元,TTM)", "营业成本(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -319,7 +319,7 @@ def money163_10K_zcfzb_analysis(df_res):
     temp[r"报告日期"] = 0
     temp.loc["营业收入(万元,TTM)"] = temp.loc["营业收入(万元)"].rolling(4).sum()
     temp.loc["应收账款周转天数(TTM)"] = list(map(lambda x, y: 360.0 * x / y if y != 0 else float("nan"), temp.loc["应收账款(万元)"],
-                                     temp.loc["营业收入(万元,TTM)"]))
+                                         temp.loc["营业收入(万元,TTM)"]))
     temp = temp.loc[["应收账款周转天数(TTM)", "应收账款(万元)", "营业收入(万元,TTM)", "营业收入(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -330,7 +330,7 @@ def money163_10K_zcfzb_analysis(df_res):
     temp[r"报告日期"] = 0
     temp.loc["营业成本(万元,TTM)"] = temp.loc["营业成本(万元)"].rolling(4).sum()
     temp.loc["应付账款周转天数(TTM)"] = list(map(lambda x, y: 360.0 * x / y if y != 0 else float("nan"), temp.loc["应付账款(万元)"],
-                                     temp.loc["营业成本(万元,TTM)"]))
+                                         temp.loc["营业成本(万元,TTM)"]))
     temp = temp.loc[["应付账款周转天数(TTM)", "应付账款(万元)", "营业成本(万元,TTM)", "营业成本(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -341,7 +341,7 @@ def money163_10K_zcfzb_analysis(df_res):
     temp[r"报告日期"] = 0
     temp.loc["营业收入(万元,TTM)"] = temp.loc["营业收入(万元)"].rolling(4).sum()
     temp.loc["总资产周转天数(TTM)"] = list(map(lambda x, y: 360.0 * x / y if y != 0 else float("nan"), temp.loc["资产总计(万元)"],
-                                    temp.loc["营业收入(万元,TTM)"]))
+                                        temp.loc["营业收入(万元,TTM)"]))
     temp = temp.loc[["总资产周转天数(TTM)", "资产总计(万元)", "营业收入(万元,TTM)", "营业收入(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -352,7 +352,7 @@ def money163_10K_zcfzb_analysis(df_res):
                       df_res_['zcfzb'].loc[["流动负债合计(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["速动比率"] = list(map(lambda x, y, z: (x + y) / z if z != 0 else float("nan"), temp.loc["货币资金(万元)"],
-                            temp.loc["应收账款(万元)"], temp.loc["流动负债合计(万元)"]))
+                                temp.loc["应收账款(万元)"], temp.loc["流动负债合计(万元)"]))
     temp = temp.loc[["速动比率", "货币资金(万元)", "应收账款(万元,TTM)", "流动负债合计(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -375,12 +375,12 @@ def money163_10K_zcfzb_analysis(df_res):
                       df_res_['zcfzb'].loc[["资产总计(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["总有息负债(万元)"] = temp.loc[["短期借款(万元)", "向中央银行借款(万元)", "吸收存款及同业存放(万元)", "拆入资金(万元)",
-                                       "交易性金融负债(万元)", "衍生金融负债(万元)", "应付短期债券(万元)", "一年内到期的非流动负债(万元)",
-                                       "长期借款(万元)", "应付债券(万元)", "长期应付款(万元)", "专项应付款(万元)"]].sum(axis=0)
+                                      "交易性金融负债(万元)", "衍生金融负债(万元)", "应付短期债券(万元)", "一年内到期的非流动负债(万元)",
+                                      "长期借款(万元)", "应付债券(万元)", "长期应付款(万元)", "专项应付款(万元)"]].sum(axis=0)
     temp.loc["有息负债率"] = list(map(lambda x, y: float(x) / y if y != 0 else float("nan"), temp.loc["总有息负债(万元)"],
-                             temp.loc["资产总计(万元)"]))
+                                 temp.loc["资产总计(万元)"]))
     temp.loc["总负债率"] = list(map(lambda x, y: float(x) / y if y != 0 else float("nan"), temp.loc["负债合计(万元)"],
-                            temp.loc["资产总计(万元)"]))
+                                temp.loc["资产总计(万元)"]))
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
     df_zcfzb_ana = pd.concat([df_zcfzb_ana, temp], axis=0)
@@ -454,9 +454,9 @@ def money163_10K_lrb_analysis(df_res):
                       df_res_['lrb'].loc[["营业总收入(万元)"]], df_res_['lrb'].loc[["净利润(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["营业毛利率"] = list(map(lambda x, y: 1 - x / y if y != 0 else float("nan"), temp.loc["营业成本(万元)"],
-                             temp.loc["营业收入(万元)"]))
+                                 temp.loc["营业收入(万元)"]))
     temp.loc["净利润率"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["净利润(万元)"],
-                            temp.loc["营业总收入(万元)"]))
+                                temp.loc["营业总收入(万元)"]))
     temp = temp.loc[["营业毛利率", "营业成本(万元)", "营业收入(万元)", "净利润率", "净利润(万元)", "营业总收入(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -467,11 +467,11 @@ def money163_10K_lrb_analysis(df_res):
                       df_res_['lrb'].loc[["管理费用(万元)"]], df_res_['lrb'].loc[["财务费用(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["销售费用(%)"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["销售费用(万元)"],
-                               temp.loc["营业总成本(万元)"]))
+                                   temp.loc["营业总成本(万元)"]))
     temp.loc["管理费用(%)"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["管理费用(万元)"],
-                               temp.loc["营业总成本(万元)"]))
+                                   temp.loc["营业总成本(万元)"]))
     temp.loc["财务费用(%)"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["财务费用(万元)"],
-                               temp.loc["营业总成本(万元)"]))
+                                   temp.loc["营业总成本(万元)"]))
     temp = temp.loc[["营业总成本(万元)", "销售费用(万元)", "管理费用(万元)", "财务费用(万元)", "销售费用(%)", "管理费用(%)", "财务费用(%)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -481,7 +481,7 @@ def money163_10K_lrb_analysis(df_res):
     temp = pd.concat([df_res_['lrb'].loc[["营业总收入(万元)"]], df_res_['lrb'].loc[["营业外收入(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["营业外收入/营业总收入"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["营业外收入(万元)"],
-                                   temp.loc["营业总收入(万元)"]))
+                                       temp.loc["营业总收入(万元)"]))
     temp = temp.loc[["营业外收入/营业总收入", "营业外收入(万元)", "营业总收入(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -491,7 +491,7 @@ def money163_10K_lrb_analysis(df_res):
     temp = pd.concat([df_res_['lrb'].loc[["营业外支出(万元)"]], df_res_['lrb'].loc[["净利润(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["营业外支出/净利润"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["营业外支出(万元)"],
-                                 temp.loc["净利润(万元)"]))
+                                     temp.loc["净利润(万元)"]))
     temp = temp.loc[["营业外支出/净利润", "营业外支出(万元)", "净利润(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -501,7 +501,7 @@ def money163_10K_lrb_analysis(df_res):
     temp = pd.concat([df_res_['lrb'].loc[["投资收益(万元)"]], df_res_['lrb'].loc[["净利润(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["投资收益/净利润"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["投资收益(万元)"],
-                                temp.loc["净利润(万元)"]))
+                                    temp.loc["净利润(万元)"]))
     temp = temp.loc[["投资收益/净利润", "投资收益(万元)", "净利润(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -510,7 +510,8 @@ def money163_10K_lrb_analysis(df_res):
     i += 1
     temp = pd.concat([df_res_['lrb'].loc[["利润总额(万元)"]], df_res_['lrb'].loc[["所得税费用(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
-    temp.loc["税率"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["所得税费用(万元)"], temp.loc["利润总额(万元)"]))
+    temp.loc["税率"] = list(
+        map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["所得税费用(万元)"], temp.loc["利润总额(万元)"]))
     temp = temp.loc[["税率", "所得税费用(万元)", "利润总额(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -530,7 +531,7 @@ def money163_10K_lrb_analysis(df_res):
     temp[r"报告日期"] = 0
     temp.loc["季度营业收入(万元)"] = temp.loc["营业收入(万元)"] - temp.loc["营业收入(万元)"].shift(1)
     temp.loc["季度营业收入(万元)"] = list(map(lambda x, y, z: x if str(z)[5:7] != "03" else y, temp.loc["季度营业收入(万元)"],
-                                  temp.loc["营业收入(万元)"], temp.columns))
+                                      temp.loc["营业收入(万元)"], temp.columns))
     temp.loc["应收账款QoQ(万元)"] = temp.loc["应收账款(万元)"] - temp.loc["应收账款(万元)"].shift(1)
     temp = temp.loc[["营业收入(万元)", "季度营业收入(万元)", "应收账款(万元)", "应收账款QoQ(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
@@ -542,11 +543,12 @@ def money163_10K_lrb_analysis(df_res):
                       df_res_['zcfzb'].loc[["短期借款(万元)", '长期借款(万元)', '应付债券(万元)', '应付票据(万元)',
                                             '一年内到期的非流动负债(万元)', '应付短期债券(万元)', '所有者权益(或股东权益)合计(万元)']]], axis=0)
     temp[r"报告日期"] = 0
-    temp.loc["EBIT*(1-Tax)(万元)"] = [(x[0] + x[1]) * min(1 - x[2] / x[3], 1) for x in temp.loc[["营业利润(万元)", "财务费用(万元)", "所得税费用(万元)", "利润总额(万元)"]].T.values]
+    temp.loc["EBIT*(1-Tax)(万元)"] = [(x[0] + x[1]) * min(1 - x[2] / x[3], 1) for x in
+                                    temp.loc[["营业利润(万元)", "财务费用(万元)", "所得税费用(万元)", "利润总额(万元)"]].T.values]
     temp.loc["投入资本(万元)"] = temp.loc[["短期借款(万元)", '长期借款(万元)', '应付债券(万元)', '应付票据(万元)',
-                                      '一年内到期的非流动负债(万元)', '应付短期债券(万元)', '所有者权益(或股东权益)合计(万元)']].sum(axis=0)
+                                     '一年内到期的非流动负债(万元)', '应付短期债券(万元)', '所有者权益(或股东权益)合计(万元)']].sum(axis=0)
     temp.loc["ROIC"] = list(map(lambda x, y: x / y if y != 0 else float('nan'), temp.loc["EBIT*(1-Tax)(万元)"],
-                            temp.loc["投入资本(万元)"]))
+                                temp.loc["投入资本(万元)"]))
     temp = temp.loc[["EBIT*(1-Tax)(万元)", "投入资本(万元)", "ROIC"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -584,7 +586,7 @@ def money163_10K_xjllb_analysis(df_res):
     temp = pd.concat([df_res_['xjllb'].loc[["经营活动产生的现金流量净额(万元)"]], df_res_['lrb'].loc[["净利润(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["经营现金流/净利润"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["经营活动产生的现金流量净额(万元)"],
-                                 temp.loc["净利润(万元)"]))
+                                     temp.loc["净利润(万元)"]))
     temp = temp.loc[["经营现金流/净利润", "经营活动产生的现金流量净额(万元)", "净利润(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -594,7 +596,7 @@ def money163_10K_xjllb_analysis(df_res):
     temp = pd.concat([df_res_['xjllb'].loc[["投资活动现金流入小计(万元)"]], df_res_['xjllb'].loc[["投资活动现金流出小计(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["投资流入/投资流出"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["投资活动现金流入小计(万元)"],
-                                 temp.loc["投资活动现金流出小计(万元)"]))
+                                     temp.loc["投资活动现金流出小计(万元)"]))
     temp = temp.loc[["投资流入/投资流出", "投资活动现金流入小计(万元)", "投资活动现金流出小计(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -604,7 +606,7 @@ def money163_10K_xjllb_analysis(df_res):
     temp = pd.concat([df_res_['xjllb'].loc[["筹资活动现金流入小计(万元)"]], df_res_['xjllb'].loc[["筹资活动现金流出小计(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["筹资流入/筹资流出"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["筹资活动现金流入小计(万元)"],
-                                 temp.loc["筹资活动现金流出小计(万元)"]))
+                                     temp.loc["筹资活动现金流出小计(万元)"]))
     temp = temp.loc[["筹资流入/筹资流出", "筹资活动现金流入小计(万元)", "筹资活动现金流出小计(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -614,7 +616,7 @@ def money163_10K_xjllb_analysis(df_res):
     temp = pd.concat([df_res_['xjllb'].loc[["销售商品、提供劳务收到的现金(万元)"]], df_res_['lrb'].loc[["营业收入(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["收现比"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["销售商品、提供劳务收到的现金(万元)"],
-                           temp.loc["营业收入(万元)"]))
+                               temp.loc["营业收入(万元)"]))
     temp = temp.loc[["收现比", "销售商品、提供劳务收到的现金(万元)", "营业收入(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -624,7 +626,7 @@ def money163_10K_xjllb_analysis(df_res):
     temp = pd.concat([df_res_['zcfzb'].loc[["货币资金(万元)"]], df_res_['zcfzb'].loc[["资产总计(万元)"]]], axis=0)
     temp[r"报告日期"] = 0
     temp.loc["现金/总资产"] = list(map(lambda x, y: x / y if y != 0 else float("nan"), temp.loc["货币资金(万元)"],
-                              temp.loc["资产总计(万元)"]))
+                                  temp.loc["资产总计(万元)"]))
     temp = temp.loc[["现金/总资产", "货币资金(万元)", "资产总计(万元)"]]
     temp.index = [str(i) + '. ' + x for x in temp.index]
     temp[r"报告日期"] = temp.index
@@ -1020,7 +1022,7 @@ if __name__ == "__main__":
 
     seccode = '601988'
     secname = "中国银行"
-    dir_path = "C:/Users/Dai/Desktop/investment/Git/AutoDai/tool/Dai_FinSys/"
+    dir_path = "C:/Users/Dai/Desktop/investment/Git/AutoDai_py3/tool/Dai_FinSys"
     download_finfdtml_excel(seccode, secname, dir_path)
 
     # res = money163_10K_data_ana(seccode)

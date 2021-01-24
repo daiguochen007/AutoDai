@@ -11,7 +11,7 @@ import time
 import win32com.client as win32
 from selenium import webdriver
 
-from . import util_basics
+from DaiToolkit import util_basics
 
 CHROME_PROFILE_PATH = 'C:/Users/Dai/AppData/Local/Google/Chrome/User Data'
 

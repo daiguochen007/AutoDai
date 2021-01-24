@@ -8,8 +8,8 @@ Created on Sun Sep 20 02:16:11 2020
 import pandas as pd
 from sqlalchemy import create_engine
 
-from . import util_basics
-from . import util_readfile
+from DaiToolkit import util_basics
+from DaiToolkit import util_readfile
 
 def conn_mysql_db(db_name):
     """

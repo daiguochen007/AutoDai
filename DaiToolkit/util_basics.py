@@ -409,7 +409,7 @@ def get_today():
 
 
 def string_to_unicode(string):
-    """transfer str to unicode"""
-    return string.decode('utf-8') if type(string) != str else string
+    """transfer str to unicode in py2"""
+    return string
 
 

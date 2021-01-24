@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from . import util_basics
+from DaiToolkit import util_basics
 
 
 def df_tbl_breakdown(df_tbls, preheadrows=0, header=True, auto_clean_empty_cols=True, auto_clean_empty_rows=False):
@@ -58,17 +58,6 @@ def df_add_blank_rows(df, nrows):
         return df
     else:
         return df.append(pd.DataFrame([[float("nan")] * len(df.columns)] * (nrows - len(df)), columns=df.columns))
-
-
-def df_to_utf8(df):
-    """
-    df encode to chinese / for spyder gui copy
-    no df return
-    """
-    for c in df.columns:
-        df[c] = [x.encode('utf-8') if type(x) == str else x for x in df[c]]
-    df.columns = [x.encode('utf-8') if type(x) == str else x for x in df.columns]
-    df.index = [x.encode('utf-8') if type(x) == str else x for x in df.index]
 
 
 def df_fmt_num_cols(df, columns, fmt_type="#,##"):

@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import tushare as ts
 
-from . import util_basics
-from . import util_database
-from . import util_readfile
+from DaiToolkit import util_basics
+from DaiToolkit import util_database
+from DaiToolkit import util_readfile
 
 PROJECT_DATA_TUSHARE_PATH = util_basics.PROJECT_DATA_PATH + "/tushare"
 #ts.set_token(util_readfile.read_yaml(util_basics.PROJECT_CODE_PATH + "/DaiToolkit/login.yaml")["tushare"]['token'])
@@ -33,8 +33,6 @@ def tushare_getallsec_basics():
               'profit': '利润同比(%)', 'gpr': '毛利率(%)',
               'npr': '净利润率(%)', 'holders': '股东人数'}
     df.columns = [colmap[x] for x in df.columns]
-    df.columns = [x.encode('utf-8') for x in df.columns]
-    df.columns = df.columns.str.decode(encoding='UTF-8')
     today_date = datetime.datetime.now().strftime("%Y%m%d")
     df["更新时间"] = int(today_date)
 
@@ -106,7 +104,6 @@ def tushare_getqtr_profitdata(yr_qtr):
         df = ts.get_profit_data(yr_qtr[0], yr_qtr[1])
         # unicode converting
         df['code'] = [x if x != x else "0" * (6 - len(str(int(x)))) + str(int(x)) for x in df['code']]
-        df["name"] = [str(n).encode('UTF-8') for n in df["name"]]
         df["date"] = qtr_flag
         df["update"] = int(datetime.datetime.now().strftime("%Y%m%d"))
 

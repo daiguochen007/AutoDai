@@ -29,10 +29,10 @@ import plotly.graph_objs as go
 import plotly.offline as py
 from plotly import tools
 
-from . import util_basics
-from . import util_database
-from . import util_portfolio
-from . import util_tushare
+from DaiToolkit import util_basics
+from DaiToolkit import util_database
+from DaiToolkit import util_portfolio
+from DaiToolkit import util_tushare
 from functools import reduce
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
@@ -135,8 +135,6 @@ def get_stocktraderecord(autoadj=True):
         转债转股
     """
     df_allrecord = util_database.db_query("SELECT * FROM tradingrecord_ashares")
-    for c in ['证券名称', '业务类型', '币种']:
-        df_allrecord[c] = df_allrecord[c].str.decode(encoding='UTF-8')
     df_allrecord["总佣金"] = df_allrecord[["净佣金", "其他费", "印花税", "过户费", "结算费"]].sum(axis=1)
     df_allrecord["交割日期"] = pd.DatetimeIndex(list(map(str, df_allrecord["交割日期"])))
 
