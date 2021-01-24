@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>戴国晨的主页</title>
+    <script type = "text/javascript"
+           src = "{{ url_for('static', filename = 'hello.js') }}" ></script>
+</head>
+<body>
+  <h2>这是戴国晨自己用的flask app - 未来都是API的天下 [龇牙]</h2>
+  <button id="sendemail" class="float-left submit-button" >给我发个email</button>
+  <br>
+  {{ my_int }}
+  <br>
+  {{ my_str }}
+  <br>
+  {{ my_list }}
+  <br>
+  {{ my_dict }}
+  <hr>
+  <h2>模板的list数据获取</h2>
+  <hr>
+  {{ my_list[0] }}
+  <br>
+  {{ my_list.1 }}
+  <hr>
+  <h2>字典数据获取</h2>
+  <hr>
+  {{ my_dict['name'] }}
+  <br>
+  {{ my_dict.age }}
+  <hr>
+  <h2>算术运算</h2>
+  <br>
+  {{ my_list.0 + 10 }}
+  <br>
+  {{ my_list[0] + my_list.1 }}
+  <hr>
+  <input type = "button" onclick = "sayHello()" value = "第一个交互" />
+  <br>
+  <button id="upload_pics" class="float-left submit-button" >传个图片试试？</button>
+  <button id="login" class="float-left submit-button" >登录一个试试？</button>
+
+  <script type="text/javascript">
+      document.getElementById("upload_pics").onclick = function () {
+          location.href = "/upload";
+      };
+      document.getElementById("login").onclick = function () {
+          location.href = "/login";
+      };
+      document.getElementById("sendemail").onclick = function () {
+          location.href = "/sendemail";
+      };
+  </script>
+</body>
+</html>

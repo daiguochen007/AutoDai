@@ -10,6 +10,8 @@
 # egg
 DaiToolkit.egg-info/
 
+# folder
+/playground/flask/upload/
 # files
 /DaiToolkit/login.yaml
 /DaiToolkit/crypto.yaml

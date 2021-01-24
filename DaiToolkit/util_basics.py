@@ -20,7 +20,7 @@ PYTHON_EXE_PATH = r'C:\ProgramData\Anaconda2\envs\py3\python.exe'
 ACTIVATE_BAT_PATH = os.path.join(os.path.dirname(PYTHON_EXE_PATH), 'Scripts', 'activate.bat')
 
 PROJECT_ROOT_PATH = "C:/Users/Dai/Desktop/investment"
-PROJECT_CODE_PATH = PROJECT_ROOT_PATH + "/Git/AutoDai"
+PROJECT_CODE_PATH = PROJECT_ROOT_PATH + "/Git/AutoDai_py3"
 PROJECT_DATA_PATH = PROJECT_ROOT_PATH + "/data"
 
 
