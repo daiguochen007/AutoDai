@@ -10,7 +10,6 @@ import re
 import win32com.client as win32
 from PIL import ImageGrab
 from PyPDF2 import PdfFileWriter, PdfFileReader
-from pywintypes import com_error
 
 
 def excel_colnum_str(n):
@@ -267,6 +266,7 @@ class ExcelFile(object):
 
 
 def excel_to_img(fn_excel, fn_image, page=None, _range=None):
+    from pywintypes import com_error
     output_ext = os.path.splitext(fn_image)[1].upper()
     if output_ext not in ('.GIF', '.PNG', '.BMP'):
         print('Unsupported format %s' % output_ext)

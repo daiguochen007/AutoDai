@@ -151,3 +151,10 @@ if __name__ == "__main__":
     for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
         print(stat + " : " + str(
             option_bsm(stat, 'c', spot=5.39, strike=6.69, maturity_years=4.21, vol=0.15, rate=0.02)))
+
+    print("GME")
+    imp_vol = option_implied_vol("p", 0.78, 347.51, 3.0, 0.02, 0.8222, 0)
+    print("Implied Vol: "+str(imp_vol))
+    for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
+        print(stat + " : " + str(
+            option_bsm(stat, 'p', spot=347.51, strike=3, maturity_years=0.8222, vol=imp_vol, rate=0.02)))

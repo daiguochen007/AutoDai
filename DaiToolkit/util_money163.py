@@ -29,6 +29,10 @@ from DaiToolkit import util_excel
 from DaiToolkit import util_sinafinance
 
 
+def suojin(num=1):
+    return " " * 4 * num
+
+
 def money163_10K_rawdata(seccode):
     """
     从网易财经抓取财报历史数据
@@ -98,7 +102,7 @@ def money163_10K_format_zcfzb(df):
                   :].copy()
 
     for temp in [liq_ass, illiq_ass, liq_lia, illiq_lia, par_equ, min_equ]:
-        temp["报告日期"] = [" " * 8 + x for x in temp["报告日期"]]
+        temp["报告日期"] = [suojin(2) + x for x in temp["报告日期"]]
 
     def rowdf(mystr):
         return pd.DataFrame([mystr] + [float("nan")] * (len(df.columns) - 1), index=df.columns, columns=[0]).T
@@ -130,19 +134,19 @@ def money163_10K_format_lrb(df):
     # spacing
     def spacing(start_str, end_str):
         temp = [list(lrb["报告日期"]).index(start_str), list(lrb["报告日期"]).index(end_str)]
-        lrb.iloc[temp[0]:temp[1] + 1, 0] = [" " * 4 + x for x in lrb.iloc[temp[0]:temp[1] + 1, 0]]
+        lrb.iloc[temp[0]:temp[1] + 1, 0] = [suojin(1) + x for x in lrb.iloc[temp[0]:temp[1] + 1, 0]]
 
     spacing("营业收入(万元)", "其他业务收入(万元)")
     spacing("营业总成本(万元)", "资产减值损失(万元)")
-    spacing(" " * 4 + "营业成本(万元)", " " * 4 + "资产减值损失(万元)")
+    spacing(suojin(1) + "营业成本(万元)", suojin(1) + "资产减值损失(万元)")
     spacing("公允价值变动收益(万元)", "其他业务利润(万元)")
-    spacing(" " * 4 + "对联营企业和合营企业的投资收益(万元)", " " * 4 + "对联营企业和合营企业的投资收益(万元)")
+    spacing(suojin(1) + "对联营企业和合营企业的投资收益(万元)", suojin(1) + "对联营企业和合营企业的投资收益(万元)")
     spacing("营业外收入(万元)", "非流动资产处置损失(万元)")
     spacing("所得税费用(万元)", "未确认投资损失(万元)")
 
     temp = [list(lrb["报告日期"]).index("净利润(万元)") + 1, list(lrb["报告日期"]).index("每股收益") - 1]
-    lrb.iloc[temp[0]:temp[1] + 1, 0] = [" " * 4 + x for x in lrb.iloc[temp[0]:temp[1] + 1, 0]]
-    lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0] = [" " * 4 + x for x in
+    lrb.iloc[temp[0]:temp[1] + 1, 0] = [suojin(1) + x for x in lrb.iloc[temp[0]:temp[1] + 1, 0]]
+    lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0] = [suojin(1) + x for x in
                                                        lrb.iloc[list(lrb["报告日期"]).index("基本每股收益"):, 0]]
     return lrb
 
@@ -191,7 +195,7 @@ def money163_10K_format_xjllb(df):
     # spacing
     def spacing(start_str, end_str, n=0):
         temp = [list(xjllb["报告日期"]).index(" " * n + start_str), list(xjllb["报告日期"]).index(" " * n + end_str)]
-        xjllb.iloc[temp[0]:temp[1] + 1, 0] = [" " * 4 + x for x in xjllb.iloc[temp[0]:temp[1] + 1, 0]]
+        xjllb.iloc[temp[0]:temp[1] + 1, 0] = [suojin(1) + x for x in xjllb.iloc[temp[0]:temp[1] + 1, 0]]
 
     spacing("销售商品、提供劳务收到的现金(万元)", "经营活动产生的现金流量净额(万元)")
     spacing("销售商品、提供劳务收到的现金(万元)", "收到的其他与经营活动有关的现金(万元)", 4)
@@ -268,11 +272,11 @@ def money163_10K_dupont_analysis(df_res):
                            '权益乘数', '资产负债率', '负债合计(万元)', '资产总计(万元) ']]
 
     df_dupont.columns = ["净资产收益率（母公司）", '净资产收益率',
-                         ' ' * 4 + '总资产净利润率', ' ' * 8 + '营业净利润率', ' ' * 12 + '净利润(万元)', ' ' * 12 + '营业总收入(万元)',
-                         ' ' * 8 + '总资产周转率', ' ' * 12 + '营业总收入(万元) ', ' ' * 12 + '资产总计(万元)',
-                         ' ' * 4 + '归属母公司净利润占比',
-                         ' ' * 4 + '归属母公司权益占比',
-                         ' ' * 4 + '权益乘数', ' ' * 8 + '资产负债率', ' ' * 12 + '负债合计(万元)', ' ' * 12 + '资产总计(万元) ']
+                         suojin(1) + '总资产净利润率', suojin(2) + '营业净利润率', suojin(3) + '净利润(万元)', suojin(3) + '营业总收入(万元)',
+                         suojin(2) + '总资产周转率', suojin(3) + '营业总收入(万元) ', suojin(3) + '资产总计(万元)',
+                         suojin(1) + '归属母公司净利润占比',
+                         suojin(1) + '归属母公司权益占比',
+                         suojin(1) + '权益乘数', suojin(2) + '资产负债率', suojin(3) + '负债合计(万元)', suojin(3) + '资产总计(万元) ']
     df_dupont = df_dupont.T
     temp = sorted(df_dupont.columns)[::-1]
     df_dupont["报告日期"] = df_dupont.index
