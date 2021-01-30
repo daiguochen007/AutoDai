@@ -16,3 +16,4 @@ from DaiToolkit.util_readfile import *
 from DaiToolkit.util_sinafinance import *
 from DaiToolkit.util_tushare import *
 from DaiToolkit.util_web import *
+from DaiToolkit.util_timeseries import *

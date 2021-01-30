@@ -209,59 +209,6 @@ def nan_sum(list_of_numbers):
     return sum([x for x in list_of_numbers if x == x])
 
 
-def fit_distribution(series, dis_type="norm", plot=True, bins=100):
-    """
-    fit_distribution(series,dis_type="norm",plot=True,bins=100)
-    
-    fit given series from given distribution
-    series na omitted
-    return fitted parameters: MLE, location(mean), scale(variance)
-    
-    support:
-        normal
-        student t
-        gamma
-        pareto
-        powerlaw
-        beta
-    """
-    import scipy.stats
-    import numpy as np
-    import matplotlib.pyplot as plt
-    x = np.linspace(min(series), max(series), bins)
-
-    if dis_type == "norm":
-        params = scipy.stats.norm.fit(series)
-        pdf_fitted = scipy.stats.norm.pdf(x, *params)
-    elif dis_type == "t":
-        params = scipy.stats.t.fit(series)
-        pdf_fitted = scipy.stats.t.pdf(x, *params)
-    elif dis_type == "gamma":
-        params = scipy.stats.gamma.fit(series)
-        pdf_fitted = scipy.stats.gamma.pdf(x, *params)
-    elif dis_type == "pareto":
-        params = scipy.stats.pareto.fit(series)
-        pdf_fitted = scipy.stats.pareto.pdf(x, *params)
-    elif dis_type == "powerlaw":
-        params = scipy.stats.powerlaw.fit(series)
-        pdf_fitted = scipy.stats.powerlaw.pdf(x, *params)
-    elif dis_type == "beta":
-        params = scipy.stats.beta.fit(series)
-        pdf_fitted = scipy.stats.beta.pdf(x, *params)
-    else:
-        print("Distribution type not exist!")
-        return None
-
-    if plot:
-        plt.figure(figsize=(12, 4))
-        plt.plot(x, pdf_fitted, 'b-')
-        plt.hist(series, bins=bins, normed=True, alpha=.3)
-        plt.title("Distribution type: " + dis_type + " | Parameters: " + str([round(y, 2) for y in params]))
-        plt.grid(ls="--", alpha=0.7)
-        plt.show()
-
-    return params
-
 
 def is_number(string):
     """
