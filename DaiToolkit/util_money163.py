@@ -1026,7 +1026,7 @@ if __name__ == "__main__":
 
     seccode = '601988'
     secname = "中国银行"
-    dir_path = "/product/Dai_FinSys"
+    dir_path = "/product/Dai_FinAna"
     download_finfdtml_excel(seccode, secname, dir_path)
 
     # res = money163_10K_data_ana(seccode)

@@ -65,7 +65,7 @@ def fit_distribution(num_list, dis_type="norm", plot=True, bins=100, title=None)
 
 def timeseries_distri_fit(ts_px, resample="", dis_type="norm", plot=True, bins=100):
     """
-    fit return distribution
+    fit return distribution from price timeseries
 
     :param ts_px:
     :param resample:
