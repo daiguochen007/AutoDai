@@ -3,7 +3,7 @@
 雪球ID：戴老师爱学习  &nbsp; &nbsp; 金融文献翻译：点拾投资 / 杰晶维基
 
 ### Investment Philosophy and Framework
- - 决策方法论：逻辑高于经验，赔付高于预测，极端风险控制高于预期收益最大
+ - 决策方法论：逻辑高于经验，赔付高于预测，极端风险控制高于预期收益最优
  - 宏观分析框架
  - Beta Selection
  - Equity Alpha
