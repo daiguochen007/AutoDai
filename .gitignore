@@ -7,11 +7,15 @@
 # git
 .git
 
+# log
+.log
+
 # egg
 DaiToolkit.egg-info/
 
 # folder
 /playground/flask/upload/
+/playground/test/
 # files
 /DaiToolkit/login.yaml
 /DaiToolkit/crypto.yaml

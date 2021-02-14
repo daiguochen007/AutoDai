@@ -19,7 +19,8 @@ CHROME_PROFILE_PATH = 'C:/Users/Dai/AppData/Local/Google/Chrome/User Data'
 def download_pic_from_url(img_url, save_path, method='request'):
     '''
     download pic from url to local
-    
+
+    save_path = path/to/folder/xx.jpg
     '''
 
     def pic_download_urllib(img_url, save_path):
@@ -142,6 +143,8 @@ def selenium_getpage_untilloaded(driver, url, timeout=1800):
 def selenium_getpage_waitforelem(driver, elem, elem_type='ID', timeout=30):
     """
     until page load element
+
+    elem: name string of element
     """
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -152,8 +155,11 @@ def selenium_getpage_waitforelem(driver, elem, elem_type='ID', timeout=30):
     elif elem_type == 'XPATH':
         WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.XPATH, elem)))
         return "[" + elem_type + '] ' + elem + ' loaded.'
+    elif elem_type == 'CLASS_NAME':
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CLASS_NAME, elem)))
+        return "[" + elem_type + '] ' + elem + ' loaded.'
     else:
-        raise Exception('elem_type support ID / XPATH only')
+        raise Exception('elem_type support ID / XPATH / CLASS_NAME only')
 
 
 if __name__ == "__main__":
