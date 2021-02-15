@@ -21,3 +21,8 @@ print(stock_us_daily_df)
 #
 stock_financial_analysis_indicator_df = ak.stock_financial_analysis_indicator(stock="600383")
 
+# H股历史价格
+stock_zh_ah_daily_df = ak.stock_hk_daily(symbol="00966", adjust="qfq")
+
+# H股现价 (15分钟延时)
+stock_hkspot_df = ak.stock_hk_spot()

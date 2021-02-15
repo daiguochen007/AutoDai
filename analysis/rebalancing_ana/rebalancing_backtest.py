@@ -7,16 +7,13 @@ Created on Sat Jan 05 14:40:25 2019
 # %%
 ROOT_PATH = "C:/Users/Dai/Desktop/investment"
 import os
-import sys
-
 import numpy as np
 import pandas as pd
-
-sys.path.append(os.path.abspath(ROOT_PATH + "/__py__"))
-import toolkit as tk
-# import pyfolio as pf
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+
+import DaiToolkit as tk
+
 
 mpl.rcParams.update(mpl.rcParamsDefault)
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
