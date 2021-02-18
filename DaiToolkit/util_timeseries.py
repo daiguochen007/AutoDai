@@ -342,19 +342,22 @@ def timeseries_rebalance_ana(ts_px_series, rebalance_freqs=[5], rebalance_posper
     return df_stats
 
 
-def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal_hurdle=0, rebal_type="mean reverse", rebal_anchor="no rebalance",
+def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal_hurdle=0, rebal_type="mean reverse",
+                                      rebal_anchor="no rebalance", rebal_anchor_long_term_growth="implied",
                                       start_posperc=0.5, riskfree_rate=0.03, plot=True):
     """
     advanced rebalance analysis -> within freq period -> lower pos when price up / higher when price down -> close out when period ends
 
     :param ts_px_series: pd series "Close"
-    :param rebal_freqs: list of n trading days
-    :param rebal_ratio: rebalance position %change / daily return (5 means when market increase 1%, lower position by 5%)
+    :param rebal_freqs: 每n天进行一次再平衡（调回 rebal_anchor）, list of n trading days
+    :param rebal_ratio: 调仓轻重 rebalance position %change / daily return (5 means when market increase 1%, lower position by 5%)
     :param rebal_type: 'mean reverse': 均值回归
                        'trend': 动量/趋势
     :param rebal_anchor: 'no rebalance': 再平衡到初始静态增长状态
                          'fixed weight': 再平衡到固定配比，如40-60
-                         'long term': 再平衡到隐含长期配比
+                         'long term': 再平衡到长期增长配比
+    :param rebal_anchor_long_term_growth: 'implied': 隐含长期增长率 (最终价格/初始价格，年化)
+                                           number: 0.05 假设年化增速5%
     :param rebal_freqs: list of n trading days
     :param rebal_hurdle: only rebalance if abs(today's return) > rebal_hurdle
     :param start_posperc: allocate % to asset in the beginning, rest invest in cash
@@ -382,7 +385,10 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
     ts_px["port_nav_no_rebal"] = ts_px["pos_nav"] * start_posperc + ts_px["cash_nav"] * start_cashperc
     ts_px["no_rebal_pos_weight"] = ts_px["pos_nav"] * start_posperc / ts_px["port_nav_no_rebal"]
 
-    compound_ret_daily = ts_px["pos_nav"][-1] ** (1 / ts_px['days_accrual'].sum())
+    if rebal_anchor_long_term_growth == 'implied':
+        compound_ret_daily = ts_px["pos_nav"][-1] ** (1 / ts_px['days_accrual'].sum())
+    else:
+        compound_ret_daily = (1 + rebal_anchor_long_term_growth) ** (1 / 365)
     ts_px["pos_longterm_imp_nav"] = ts_px['days_accrual'].cumsum().apply(lambda x: compound_ret_daily ** x)
 
     for rf in rebal_freqs_str:
@@ -397,127 +403,137 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
         res[ts_px.index[0]]["rebal_cash_weight" + rf] = start_cashperc
         res[ts_px.index[0]]["pos_val_after_rebal" + rf] = start_posperc
         res[ts_px.index[0]]["cash_val_after_rebal" + rf] = start_cashperc
-        res[ts_px.index[0]]["rebal_signal" + rf] = 0
+        res[ts_px.index[0]]["rebal_enhance_signal" + rf] = 0
+
+        res[ts_px.index[0]]["pos_val_before_rebal_anchor" + rf] = start_posperc
+        res[ts_px.index[0]]["cash_val_before_rebal_anchor" + rf] = start_cashperc
+        res[ts_px.index[0]]["rebal_pos_weight_anchor" + rf] = start_posperc
+        res[ts_px.index[0]]["rebal_cash_weight_anchor" + rf] = start_cashperc
+        res[ts_px.index[0]]["pos_val_after_rebal_anchor" + rf] = start_posperc
+        res[ts_px.index[0]]["cash_val_after_rebal_anchor" + rf] = start_cashperc
+        res[ts_px.index[0]]["total_val_before_rebal_anchor" + rf] = start_posperc + start_cashperc
 
         for dt, dtm1 in zip(ts_px.index[1:], ts_px.index[:-1]):
             res[dt] = {}
             res[dt]["pos_val_before_rebal" + rf] = res[dtm1]["pos_val_after_rebal" + rf] * (1 + ts_px.loc[dt, "ret_1d"])
             res[dt]["cash_val_before_rebal" + rf] = res[dtm1]["cash_val_after_rebal" + rf] * (1 + ts_px.loc[dt, "ret_1d_riskfree"])
             res[dt]["total_val_before_rebal" + rf] = res[dt]["pos_val_before_rebal" + rf] + res[dt]["cash_val_before_rebal" + rf]
+
+            res[dt]["pos_val_before_rebal_anchor" + rf] = res[dtm1]["pos_val_after_rebal_anchor" + rf] * (1 + ts_px.loc[dt, "ret_1d"])
+            res[dt]["cash_val_before_rebal_anchor" + rf] = res[dtm1]["cash_val_after_rebal_anchor" + rf] * (1 + ts_px.loc[dt, "ret_1d_riskfree"])
+            res[dt]["total_val_before_rebal_anchor" + rf] = res[dt]["pos_val_before_rebal_anchor" + rf] + res[dt]["cash_val_before_rebal_anchor" + rf]
+
             if ts_px.loc[dt, "rebal_tag" + rf]:
-                # return to normal weight
+                # rebalance trigged -> return to rebal anchor weight
                 if rebal_anchor == "no rebalance":
                     res[dt]["rebal_pos_weight" + rf] = ts_px.loc[dt, "pos_nav"] * start_posperc / ts_px.loc[dt, "port_nav_no_rebal"]
                 elif rebal_anchor == "fixed weight":
                     res[dt]["rebal_pos_weight" + rf] = start_posperc
                 elif rebal_anchor == "long term":
-                    res[dt]["rebal_pos_weight" + rf] = ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc / (
-                            ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc + ts_px.loc[dt, "cash_nav"] * start_cashperc)
+                    res[dt]["rebal_pos_weight" + rf] = ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc / (ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc + ts_px.loc[dt, "cash_nav"] * start_cashperc)
                 else:
                     raise Exception("rebal_anchor support 'no rebalance','fixed weight','long term'")
                 res[dt]["rebal_cash_weight" + rf] = 1 - res[dt]["rebal_pos_weight" + rf]
-                res[dt]["rebal_signal" + rf] = 0
+                res[dt]["rebal_enhance_signal" + rf] = 0
+
+                # anchor
+                res[dt]['rebal_pos_weight_anchor' + rf] = res[dt]["rebal_pos_weight" + rf]
+                res[dt]["rebal_cash_weight_anchor" + rf] = res[dt]["rebal_cash_weight" + rf]
             else:
-                # rebalance when mkt move
+                # between rebalance freq -> enhance rebalance if price moved much
                 # mean reverse: when market increase 1%, lower position by 1% * rebal_ratio, no short no leverage, postion in [0,1]
                 origin_weight = res[dt]["pos_val_before_rebal" + rf] / res[dt]["total_val_before_rebal" + rf]
                 if ts_px.loc[dt, "ret_1d"] > rebal_hurdle:
                     rebal_ratio_curr = rebal_ratio
-                    rebal_signal = rebal_type_direction
+                    rebal_enhance_signal = rebal_type_direction
                 elif ts_px.loc[dt, "ret_1d"] < -1 * rebal_hurdle:
                     rebal_ratio_curr = rebal_ratio
-                    rebal_signal = -1 * rebal_type_direction
+                    rebal_enhance_signal = -1 * rebal_type_direction
                 else:
                     rebal_ratio_curr = 0
-                    rebal_signal = 0
+                    rebal_enhance_signal = 0
 
                 if origin_weight >= 1 or origin_weight <= 0:
-                    rebal_ratio_curr = 0
-                    rebal_signal = 0
+                    #rebal_ratio_curr = 0
+                    rebal_enhance_signal = 0
 
                 res[dt]["rebal_pos_weight" + rf] = origin_weight + rebal_type_direction * ts_px.loc[dt, "ret_1d"] * rebal_ratio_curr
                 res[dt]["rebal_pos_weight" + rf] = max(min(1, res[dt]["rebal_pos_weight" + rf]), 0)
                 res[dt]["rebal_cash_weight" + rf] = 1 - res[dt]["rebal_pos_weight" + rf]
-                res[dt]["rebal_signal" + rf] = res[dtm1]["rebal_signal" + rf] + rebal_signal
+                res[dt]["rebal_enhance_signal" + rf] = res[dtm1]["rebal_enhance_signal" + rf] + rebal_enhance_signal
+
+                # anchor
+                res[dt]['rebal_pos_weight_anchor' + rf] = res[dt]["pos_val_before_rebal_anchor" + rf]/res[dt]["total_val_before_rebal_anchor" + rf]
+                res[dt]["rebal_cash_weight_anchor" + rf] = 1 - res[dt]["rebal_pos_weight_anchor" + rf]
 
             res[dt]["pos_val_after_rebal" + rf] = res[dt]["total_val_before_rebal" + rf] * res[dt]["rebal_pos_weight" + rf]
             res[dt]["cash_val_after_rebal" + rf] = res[dt]["total_val_before_rebal" + rf] * res[dt]["rebal_cash_weight" + rf]
+
+            res[dt]["pos_val_after_rebal_anchor" + rf] = res[dt]["total_val_before_rebal_anchor" + rf] * res[dt]["rebal_pos_weight_anchor" + rf]
+            res[dt]["cash_val_after_rebal_anchor" + rf] = res[dt]["total_val_before_rebal_anchor" + rf] * res[dt]["rebal_cash_weight_anchor" + rf]
 
         res = pd.DataFrame(res).T
         ts_px = ts_px.merge(res, left_index=True, right_index=True, how='left')
 
         ts_px["port_nav_rebal" + rf] = ts_px["pos_val_after_rebal" + rf] + ts_px["cash_val_after_rebal" + rf]
-        ts_px["port_rebal_excess_ret" + rf] = (ts_px["port_nav_rebal" + rf] / ts_px["port_nav_rebal" + rf].shift(1)) - (
-                ts_px["port_nav_no_rebal"] / ts_px["port_nav_no_rebal"].shift(1))
+        ts_px["port_nav_rebal_anchor" + rf] = ts_px["pos_val_after_rebal_anchor" + rf] + ts_px["cash_val_after_rebal_anchor" + rf]
+
+        ts_px["port_rebal_excess_ret" + rf] = (ts_px["port_nav_rebal" + rf] / ts_px["port_nav_rebal" + rf].shift(1)) - (ts_px["port_nav_rebal_anchor"+ rf] / ts_px["port_nav_rebal_anchor"+ rf].shift(1))
         ts_px["port_rebal_excess_ret" + rf] = ts_px["port_rebal_excess_ret" + rf].fillna(0)
         ts_px["port_rebal_excess_cumret" + rf] = (ts_px["port_rebal_excess_ret" + rf] + 1).cumprod()
 
+        ts_px["port_rebal_anchor_excess_ret" + rf] = (ts_px["port_nav_rebal_anchor" + rf] / ts_px["port_nav_rebal_anchor" + rf].shift(1)) - (ts_px["port_nav_no_rebal"] / ts_px["port_nav_no_rebal"].shift(1))
+        ts_px["port_rebal_anchor_excess_ret" + rf] = ts_px["port_rebal_anchor_excess_ret" + rf].fillna(0)
+        ts_px["port_rebal_anchor_excess_cumret" + rf] = (ts_px["port_rebal_anchor_excess_ret" + rf] + 1).cumprod()
+
     if plot:
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
         fig.suptitle(
-            'Advanced Rebalance Analysis (rebalance freq = ' + ','.join([x + 'd' for x in rebal_freqs_str]) + ' | type = ' + rebal_type + ' | hurdle = ' + \
-            str(int(rebal_hurdle * 100)) + '% | anchor = ' + rebal_anchor + ')')
-        ax1.plot(ts_px.index, ts_px["port_nav_no_rebal"], '-', color="dimgrey", label='port nav|no rebal')
+            'Advanced Rebalance Analysis\n(rebalance freq:' + ','.join([x + 'd' for x in rebal_freqs_str]) + ' | type:' + rebal_type + ' | hurdle:' + \
+            str(int(rebal_hurdle * 100)) + '% | anchor:' + rebal_anchor + ' | assume pos ann ret:' + str(round((compound_ret_daily ** 365 - 1) * 100, 2)) + '%)')
         for rf in rebal_freqs_str:
-            ax1.plot(ts_px.index, ts_px["port_nav_rebal" + rf], '-', label='port nav|rebal ' + str(rf) + 'd', alpha=0.5)
-        ax1.legend()
+            ax1.plot(ts_px.index, ts_px["port_nav_rebal" + rf], '-', label='rebal enhance ' + str(rf) + 'd', alpha=0.7)
+            ax1.plot(ts_px.index, ts_px["port_nav_rebal_anchor" + rf], '-', label='rebal anchor ' + str(rf) + 'd', alpha=0.3)
+        ax1.plot(ts_px.index, ts_px["port_nav_no_rebal"], '-', color="dimgrey", label='no rebal', alpha=0.9)
+        ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax1.set_title('Portfolio NAV compare')
         ax1.grid(ls="--", alpha=0.5)
         for rf in rebal_freqs_str:
-            ax2.plot(ts_px.index, ts_px["port_rebal_excess_cumret" + rf], '-', label='excess ret|rebal ' + str(rf) + 'd', alpha=0.9)
-        ax2.legend()
+            ax2.plot(ts_px.index, ts_px["port_rebal_excess_cumret" + rf]-1, '-', label='rebal ' + str(rf) + 'd enhance-anchor', alpha=0.9)
+        ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax2.set_title('Cumulative excess return (enhance - anchor)')
         ax2.grid(ls="--", alpha=0.5)
-        ax3.plot(ts_px.index, ts_px["no_rebal_pos_weight"], '-', color="dimgrey", label='pos weight|no rebal')
         for rf in rebal_freqs_str:
-            ax3.fill_between(ts_px.index, ts_px["rebal_pos_weight" + rf], alpha=0.3, label='pos weight|rebal ' + str(rf) + 'd')
-        ax3.legend()
+            ax3.plot(ts_px.index, ts_px["port_rebal_anchor_excess_cumret" + rf]-1, '-', label='rebal ' + str(rf) + 'd anchor-no rebal', alpha=0.9)
+        ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax3.set_title('Cumulative excess return (anchor - no rebalance)')
+        ax3.grid(ls="--", alpha=0.5)
+        ymin, ymax = ax3.get_ylim()
+        ax3.set_ylim(min(ymin, -0.01), max(ymax, 0.01))
+        ax4.plot(ts_px.index, ts_px["no_rebal_pos_weight"], '-', color="dimgrey", label='no rebal', alpha=0.3)
+        for rf in rebal_freqs_str:
+            ax4.plot(ts_px.index, ts_px["rebal_pos_weight_anchor"+ rf], '--', alpha =0.3, label='rebal anchor ' + str(rf) + 'd')
+            ax4.plot(ts_px.index, ts_px["rebal_pos_weight" + rf], '-', alpha=0.7, label='rebal ' + str(rf) + 'd')
+        ax4.set_title('Position Weights')
+        ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         plt.show()
 
+    # performance stats
     df_stats = {}
-    for col in ["port_nav_no_rebal", "pos_nav"] + ["port_nav_rebal" + rf for rf in rebal_freqs_str]:
+    for col in ["pos_nav", "port_nav_no_rebal"] + ["port_nav_rebal" + rf for rf in rebal_freqs_str]+["port_nav_rebal_anchor" + rf for rf in rebal_freqs_str]:
         df_stats[col] = perf_stats((ts_px[col] / ts_px[col].shift(1) - 1).dropna(how='any'))
     for col in ["port_rebal_excess_ret" + rf for rf in rebal_freqs_str]:
         df_stats[col] = perf_stats(ts_px[col].dropna(how='any'))
     df_stats = pd.DataFrame(df_stats)
-    df_stats = df_stats[["port_nav_no_rebal"] + ["port_nav_rebal" + rf for rf in rebal_freqs_str[::-1]] + [
-        "port_rebal_excess_ret" + rf for rf in rebal_freqs_str[::-1]] + ["pos_nav"]]
+    df_stats = df_stats[["port_nav_no_rebal"] + ["port_nav_rebal" + rf for rf in rebal_freqs_str] + [
+        "port_nav_rebal_anchor" + rf for rf in rebal_freqs_str] + ["port_rebal_excess_ret" + rf for rf in rebal_freqs_str] + ["pos_nav"]]
     rename_dict = {"port_nav_no_rebal": "Portfolio(no rebal)", "pos_nav": "Asset(100% hold)"}
-    rename_dict.update({"port_nav_rebal" + rf: "Portfolio(" + rf + "d rebal)" for rf in rebal_freqs_str})
-    rename_dict.update({"port_rebal_excess_ret" + rf: "Portfolio Excess Ret(" + rf + "d rebal)" for rf in rebal_freqs_str})
+    rename_dict.update({"port_nav_rebal" + rf: "Portfolio(" + rf + "d rebal enhance)" for rf in rebal_freqs_str})
+    rename_dict.update({"port_nav_rebal_anchor" + rf: "Portfolio(" + rf + "d rebal anchor)" for rf in rebal_freqs_str})
+    rename_dict.update({"port_rebal_excess_ret" + rf: "Enhance Excess Ret(" + rf + "d rebal)" for rf in rebal_freqs_str})
     df_stats = df_stats.rename(rename_dict, axis=1).T
-
-    df_stats_add = {}
-    for rf in rebal_freqs_str:
-        num_open_sig_list = [(x[2], x[0]) for x in zip(ts_px["rebal_signal" + rf], ts_px["rebal_signal" + rf].shift(1), ts_px["#"]) if
-                             ((x[1] >= 0 and x[0] - x[1] == 1) or (x[1] <= 0 and x[0] - x[1] == -1))]
-        num_close_list = [ts_px.loc[(ts_px["#"] > x[0]) & (ts_px["rebal_signal" + rf].apply(abs) < abs(x[1])), '#'][0] for x in num_open_sig_list]
-
-        tradelist_cum_excess_ret = []
-        tradelist_length = []
-        for num_open_sig, num_close in zip(num_open_sig_list, num_close_list):
-            num_open, _ = num_open_sig
-            ts_px_rebal_trade = ts_px.loc[(ts_px['#'] <= num_close) & (ts_px['#'] >= num_open), :]
-            tradelist_cum_excess_ret.append(ts_px_rebal_trade["port_rebal_excess_cumret" + rf][-1] / ts_px_rebal_trade["port_rebal_excess_cumret" + rf][0] - 1)
-            tradelist_length.append(len(ts_px_rebal_trade) - 1)
-
-        pf_name = "Portfolio(" + rf + "d rebal)"
-        df_stats_add[pf_name] = {}
-        df_stats_add[pf_name]['Rebal # Triggered'] = len(tradelist_cum_excess_ret)
-        df_stats_add[pf_name]['Rebal % Triggered'] = df_stats_add["Portfolio(" + rf + "d rebal)"]['Rebal # Triggered'] / len(ts_px)
-        if df_stats_add[pf_name]['Rebal # Triggered'] > 0:
-            df_stats_add[pf_name]['Rebal Hit Ratio'] = len([x for x in tradelist_cum_excess_ret if x > 0]) / df_stats_add[pf_name]['Rebal # Triggered']
-        else:
-            df_stats_add[pf_name]['Rebal Hit Ratio'] = float('nan')
-        df_stats_add[pf_name]['Rebal Avg Trade Length'] = np.mean(tradelist_length)
-        df_stats_add[pf_name]['Rebal Avg Ret'] = np.mean(tradelist_cum_excess_ret)
-        df_stats_add[pf_name]['Rebal Avg Win Ret'] = np.mean([x for x in tradelist_cum_excess_ret if x > 0])
-        df_stats_add[pf_name]['Rebal Avg Lose Ret'] = np.mean([x for x in tradelist_cum_excess_ret if x < 0])
-        df_stats_add[pf_name]['Rebal Avg Win/Lose Ratio'] = df_stats_add[pf_name]['Rebal Avg Win Ret'] / df_stats_add[pf_name]['Rebal Avg Lose Ret'] * -1
-    df_stats_add = pd.DataFrame(df_stats_add).T
-    df_stats_add = df_stats_add[
-        ['Rebal Hit Ratio', 'Rebal Avg Ret', 'Rebal Avg Win/Lose Ratio', 'Rebal Avg Win Ret', 'Rebal Avg Lose Ret', 'Rebal # Triggered', 'Rebal % Triggered',
-         'Rebal Avg Trade Length']]
-    df_stats = df_stats.merge(df_stats_add, left_index=True, right_index=True, how='left')
     return df_stats
+
 
 
 if __name__ == "__main__":
@@ -534,7 +550,9 @@ if __name__ == "__main__":
     df_raw.loc[df_raw.index <= '2006-05-24', ['Open', 'High', 'Low', 'Close']] *= 23.75 / 27.86  # 贵州茅台数据错误（红利复权错误）
 
     df_raw = yf.Ticker("601318.SS").history(period="max")  # 中国平安
+    df_raw = yf.Ticker("600016.SS").history(period="max")  # 民生银行
     # df_raw = yf.Ticker("600383.SS").history(period="max")  # 金地集团 数据错误 (少跌停板)
+    # df_raw = yf.Ticker("000651.SZ").history(period="max")  # 格力电器 数据错误 (少跌停板)
 
     # basic stats
     df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["Close"], plot=True, plot_max_freq=30)
@@ -555,8 +573,8 @@ if __name__ == "__main__":
 
     # advanced rebalance stats
     # .loc[df_raw.index >= "2010-01-01", "Close"]
-    df_rebal_stats = timeseries_advanced_rebalance_ana(ts_px_series=df_raw.loc[df_raw.index >= "2010-01-01", "Close"], rebal_freqs=[5, 10, 20, 30],
-                                                       rebal_anchor="no rebalance", rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.03,
-                                                       start_posperc=0.5,
-                                                       riskfree_rate=0.01, plot=True)
+    df_rebal_stats = timeseries_advanced_rebalance_ana(ts_px_series=df_raw["Close"], rebal_freqs=[5, 10, 20,252],
+                                                       rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
+                                                       rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.8,
+                                                       riskfree_rate=0.03, plot=True)
     df_rebal_stats.to_clipboard()
