@@ -260,7 +260,7 @@ def timeseries_var_ana(ts_px, days=[1, 5, 10, 20, 30], var_level=[0.995, 0.99, 0
 
 def timeseries_rebalance_ana(ts_px_series, rebalance_freqs=[5], rebalance_posperc=0.5, riskfree_rate=0.03, plot=True):
     """
-    regular rebalance analysis, traditional 60/40
+    basic rebalance analysis, traditional 60/40
 
     :param ts_px_series: pd series "Close"
     :param rebalance_freq: n trading days
@@ -537,6 +537,7 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
 
 
 if __name__ == "__main__":
+
     df_raw = yf.Ticker("^GSPC").history(period="max")  # sp500
     df_raw = yf.Ticker("^IXIC").history(period="max")  # 纳斯达克
     df_raw = yf.Ticker("^N225").history(period="max")  # 日经225
@@ -554,18 +555,19 @@ if __name__ == "__main__":
     # df_raw = yf.Ticker("600383.SS").history(period="max")  # 金地集团 数据错误 (少跌停板)
     # df_raw = yf.Ticker("000651.SZ").history(period="max")  # 格力电器 数据错误 (少跌停板)
 
+    df_raw = yf.Ticker("TSLA").history(period="max")  # TSLA
+
     # basic stats
-    df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["Close"], plot=True, plot_max_freq=30)
+    df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["Close"], plot=True, plot_max_freq=252)
     df_basic_stats.to_clipboard()
-    # # ret distribution
-    # fit_params = timeseries_fit_ret_distri(df_raw["Close"], freq="Daily", dis_type="t", plot=True, bins=300)
+    # ret distribution
+    fit_params = timeseries_fit_ret_distri(df_raw["Close"], freq="Daily", dis_type="t", plot=True, bins=300)
     # tail stats
     df_tail_stat = timeseries_tail_ana(df_raw["Close"], freqs=['Daily', "Weekly", "Monthly", "Quarterly", "Yearly"], tail_level=5, plot=True)
     df_tail_stat.to_clipboard()
     # var stats
     df_var_stat = timeseries_var_ana(df_raw["Close"], days=[1, 5, 10, 20, 30, 60, 252], var_level=[0.995, 0.99])
     df_var_stat.to_clipboard()
-
     # rebalance stats
     df_rebal_stats = timeseries_rebalance_ana(ts_px_series=df_raw["Close"], rebalance_freqs=[1, 5, 21, 65, 252],
                                               rebalance_posperc=0.5, riskfree_rate=0.03, plot=True)
@@ -573,8 +575,8 @@ if __name__ == "__main__":
 
     # advanced rebalance stats
     # .loc[df_raw.index >= "2010-01-01", "Close"]
-    df_rebal_stats = timeseries_advanced_rebalance_ana(ts_px_series=df_raw["Close"], rebal_freqs=[5, 10, 20,252],
+    df_rebal_stats = timeseries_advanced_rebalance_ana(ts_px_series=df_raw.loc[df_raw.index >= "2010-01-01", "Close"], rebal_freqs=[5,20,60],
                                                        rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
-                                                       rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.8,
+                                                       rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
                                                        riskfree_rate=0.03, plot=True)
     df_rebal_stats.to_clipboard()
