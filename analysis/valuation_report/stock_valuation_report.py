@@ -11,14 +11,12 @@ ROOT_PATH = "C:/Users/Dai/Desktop/investment"
 import datetime
 import math
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-sys.path.append(os.path.abspath(ROOT_PATH + "/__py__/"))
-import toolkit as tk
+import DaiToolkit as tk
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 

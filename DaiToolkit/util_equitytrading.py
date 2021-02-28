@@ -599,7 +599,6 @@ def plot_rebal_smy(df_pair_matched_smy):
     start_date = min(df_rebal_plot.index).strftime("%Y-%m-%d")
     end_date = max(df_rebal_plot.index).strftime("%Y-%m-%d")
 
-    plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
     # plot covered pnl by timeseries
     fig, ax1 = plt.subplots(figsize=(10, 5))
     ax2 = ax1.twinx()
@@ -674,7 +673,6 @@ def plot_rebal_unmatched_smy(df_pair_unmatched_smy):
     end_date = max(df_rebal_plot.index).strftime("%Y-%m-%d")
 
     # plot uncovered pnl by timeseries
-    plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
     fig, ax1 = plt.subplots(figsize=(10, 5))
     ax2 = ax1.twinx()
     ax1.plot(df_rebal_plot.index, df_rebal_plot['累计调仓相对盈亏(扣除手续费)'], marker="o", label="累计调仓相对盈亏(扣除手续费) ")
@@ -1384,7 +1382,6 @@ def compare_perf(start_date, end_date, highlight_seclist=[], download_data=False
     sec_hist_tbl_ret = sec_hist_tbl_ret.fillna(0)
     dict_secname = {x[0]: x[1] for x in df_allrecord[["证券代码", "证券名称"]].values if x[0] == x[0]}
     if True:
-        plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
         plt.figure(figsize=(10, 5))
         plt.plot(account_balance.index, account_balance["retcum"], marker="o", label="Account")
         for c in sec_hist_tbl_rescale.columns:
@@ -1400,7 +1397,6 @@ def compare_perf(start_date, end_date, highlight_seclist=[], download_data=False
         plt.grid(ls='--', alpha=0.6)
         plt.show()
         if len(highlight_seclist) > 0:
-            plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
             plt.figure(figsize=(10, 3))
             for c in sec_hist_tbl_rescale.columns:
                 if (c in highlight_seclist) or (dict_secname[c] in highlight_seclist):

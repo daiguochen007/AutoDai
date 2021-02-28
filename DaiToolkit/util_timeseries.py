@@ -161,13 +161,13 @@ def timeseries_tail_ana(ts_px, freqs=['Daily'], tail_level=0.001, plot=True):
 
         def fit_tail_distri(df_tail, tail_level):
             df_tail["p"] = [1.0 - float(m) / (len(df_tail) + 1) for m in df_tail.index]
-            df_tail["ret_log"] = df_tail["ret"].apply(math.log)
-            df_tail["p_log"] = df_tail["p"].apply(lambda x: math.log(x) if x > 0 else float("nan"))
+            df_tail["ret_log"] = df_tail["ret"].apply(math.log10)
+            df_tail["p_log"] = df_tail["p"].apply(lambda x: math.log10(x) if x > 0 else float("nan"))
 
             tail_vol = np.std(df_tail["ret"].to_list() + (df_tail["ret"] * -1).to_list())
             df_tail['norm_p'] = [(1 - scipy.stats.norm.cdf(x, loc=0, scale=tail_vol)) * 2 for x in df_tail["ret"]]
             df_tail['norm_p_log'] = df_tail["norm_p"].apply(
-                lambda x: float("nan") if x == 0 else math.log(x) if math.log(x) >= df_tail["p_log"].min() else float(
+                lambda x: float("nan") if x == 0 else math.log10(x) if math.log10(x) >= df_tail["p_log"].min() else float(
                     "nan"))
 
             if tail_level <= 1:
@@ -430,7 +430,8 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
                 elif rebal_anchor == "fixed weight":
                     res[dt]["rebal_pos_weight" + rf] = start_posperc
                 elif rebal_anchor == "long term":
-                    res[dt]["rebal_pos_weight" + rf] = ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc / (ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc + ts_px.loc[dt, "cash_nav"] * start_cashperc)
+                    res[dt]["rebal_pos_weight" + rf] = ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc / (
+                                ts_px.loc[dt, "pos_longterm_imp_nav"] * start_posperc + ts_px.loc[dt, "cash_nav"] * start_cashperc)
                 else:
                     raise Exception("rebal_anchor support 'no rebalance','fixed weight','long term'")
                 res[dt]["rebal_cash_weight" + rf] = 1 - res[dt]["rebal_pos_weight" + rf]
@@ -454,7 +455,7 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
                     rebal_enhance_signal = 0
 
                 if origin_weight >= 1 or origin_weight <= 0:
-                    #rebal_ratio_curr = 0
+                    # rebal_ratio_curr = 0
                     rebal_enhance_signal = 0
 
                 res[dt]["rebal_pos_weight" + rf] = origin_weight + rebal_type_direction * ts_px.loc[dt, "ret_1d"] * rebal_ratio_curr
@@ -463,7 +464,7 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
                 res[dt]["rebal_enhance_signal" + rf] = res[dtm1]["rebal_enhance_signal" + rf] + rebal_enhance_signal
 
                 # anchor
-                res[dt]['rebal_pos_weight_anchor' + rf] = res[dt]["pos_val_before_rebal_anchor" + rf]/res[dt]["total_val_before_rebal_anchor" + rf]
+                res[dt]['rebal_pos_weight_anchor' + rf] = res[dt]["pos_val_before_rebal_anchor" + rf] / res[dt]["total_val_before_rebal_anchor" + rf]
                 res[dt]["rebal_cash_weight_anchor" + rf] = 1 - res[dt]["rebal_pos_weight_anchor" + rf]
 
             res[dt]["pos_val_after_rebal" + rf] = res[dt]["total_val_before_rebal" + rf] * res[dt]["rebal_pos_weight" + rf]
@@ -478,11 +479,13 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
         ts_px["port_nav_rebal" + rf] = ts_px["pos_val_after_rebal" + rf] + ts_px["cash_val_after_rebal" + rf]
         ts_px["port_nav_rebal_anchor" + rf] = ts_px["pos_val_after_rebal_anchor" + rf] + ts_px["cash_val_after_rebal_anchor" + rf]
 
-        ts_px["port_rebal_excess_ret" + rf] = (ts_px["port_nav_rebal" + rf] / ts_px["port_nav_rebal" + rf].shift(1)) - (ts_px["port_nav_rebal_anchor"+ rf] / ts_px["port_nav_rebal_anchor"+ rf].shift(1))
+        ts_px["port_rebal_excess_ret" + rf] = (ts_px["port_nav_rebal" + rf] / ts_px["port_nav_rebal" + rf].shift(1)) - (
+                    ts_px["port_nav_rebal_anchor" + rf] / ts_px["port_nav_rebal_anchor" + rf].shift(1))
         ts_px["port_rebal_excess_ret" + rf] = ts_px["port_rebal_excess_ret" + rf].fillna(0)
         ts_px["port_rebal_excess_cumret" + rf] = (ts_px["port_rebal_excess_ret" + rf] + 1).cumprod()
 
-        ts_px["port_rebal_anchor_excess_ret" + rf] = (ts_px["port_nav_rebal_anchor" + rf] / ts_px["port_nav_rebal_anchor" + rf].shift(1)) - (ts_px["port_nav_no_rebal"] / ts_px["port_nav_no_rebal"].shift(1))
+        ts_px["port_rebal_anchor_excess_ret" + rf] = (ts_px["port_nav_rebal_anchor" + rf] / ts_px["port_nav_rebal_anchor" + rf].shift(1)) - (
+                    ts_px["port_nav_no_rebal"] / ts_px["port_nav_no_rebal"].shift(1))
         ts_px["port_rebal_anchor_excess_ret" + rf] = ts_px["port_rebal_anchor_excess_ret" + rf].fillna(0)
         ts_px["port_rebal_anchor_excess_cumret" + rf] = (ts_px["port_rebal_anchor_excess_ret" + rf] + 1).cumprod()
 
@@ -490,7 +493,8 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
         fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
         fig.suptitle(
             'Advanced Rebalance Analysis\n(rebalance freq:' + ','.join([x + 'd' for x in rebal_freqs_str]) + ' | type:' + rebal_type + ' | hurdle:' + \
-            str(int(rebal_hurdle * 100)) + '% | anchor:' + rebal_anchor + ' | assume pos ann ret:' + str(round((compound_ret_daily ** 365 - 1) * 100, 2)) + '%)')
+            str(int(rebal_hurdle * 100)) + '% | anchor:' + rebal_anchor + ' | assume pos ann ret:' + str(
+                round((compound_ret_daily ** 365 - 1) * 100, 2)) + '%)')
         for rf in rebal_freqs_str:
             ax1.plot(ts_px.index, ts_px["port_nav_rebal" + rf], '-', label='rebal enhance ' + str(rf) + 'd', alpha=0.7)
             ax1.plot(ts_px.index, ts_px["port_nav_rebal_anchor" + rf], '-', label='rebal anchor ' + str(rf) + 'd', alpha=0.3)
@@ -499,12 +503,12 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
         ax1.set_title('Portfolio NAV compare')
         ax1.grid(ls="--", alpha=0.5)
         for rf in rebal_freqs_str:
-            ax2.plot(ts_px.index, ts_px["port_rebal_excess_cumret" + rf]-1, '-', label='rebal ' + str(rf) + 'd enhance-anchor', alpha=0.9)
+            ax2.plot(ts_px.index, ts_px["port_rebal_excess_cumret" + rf] - 1, '-', label='rebal ' + str(rf) + 'd enhance-anchor', alpha=0.9)
         ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax2.set_title('Cumulative excess return (enhance - anchor)')
         ax2.grid(ls="--", alpha=0.5)
         for rf in rebal_freqs_str:
-            ax3.plot(ts_px.index, ts_px["port_rebal_anchor_excess_cumret" + rf]-1, '-', label='rebal ' + str(rf) + 'd anchor-no rebal', alpha=0.9)
+            ax3.plot(ts_px.index, ts_px["port_rebal_anchor_excess_cumret" + rf] - 1, '-', label='rebal ' + str(rf) + 'd anchor-no rebal', alpha=0.9)
         ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax3.set_title('Cumulative excess return (anchor - no rebalance)')
         ax3.grid(ls="--", alpha=0.5)
@@ -512,7 +516,7 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
         ax3.set_ylim(min(ymin, -0.01), max(ymax, 0.01))
         ax4.plot(ts_px.index, ts_px["no_rebal_pos_weight"], '-', color="dimgrey", label='no rebal', alpha=0.3)
         for rf in rebal_freqs_str:
-            ax4.plot(ts_px.index, ts_px["rebal_pos_weight_anchor"+ rf], '--', alpha =0.3, label='rebal anchor ' + str(rf) + 'd')
+            ax4.plot(ts_px.index, ts_px["rebal_pos_weight_anchor" + rf], '--', alpha=0.3, label='rebal anchor ' + str(rf) + 'd')
             ax4.plot(ts_px.index, ts_px["rebal_pos_weight" + rf], '-', alpha=0.7, label='rebal ' + str(rf) + 'd')
         ax4.set_title('Position Weights')
         ax4.legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -520,7 +524,7 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
 
     # performance stats
     df_stats = {}
-    for col in ["pos_nav", "port_nav_no_rebal"] + ["port_nav_rebal" + rf for rf in rebal_freqs_str]+["port_nav_rebal_anchor" + rf for rf in rebal_freqs_str]:
+    for col in ["pos_nav", "port_nav_no_rebal"] + ["port_nav_rebal" + rf for rf in rebal_freqs_str] + ["port_nav_rebal_anchor" + rf for rf in rebal_freqs_str]:
         df_stats[col] = perf_stats((ts_px[col] / ts_px[col].shift(1) - 1).dropna(how='any'))
     for col in ["port_rebal_excess_ret" + rf for rf in rebal_freqs_str]:
         df_stats[col] = perf_stats(ts_px[col].dropna(how='any'))
@@ -535,27 +539,41 @@ def timeseries_advanced_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio
     return df_stats
 
 
+def get_history_data(ticker, source='yahoo'):
+    '''
+    return daily ohlc data, some need adjustments
+    '''
+    if source == 'yahoo':
+        df_raw = yf.Ticker(ticker).history(period="max")
+        if ticker == '600519.SS':  # 贵州茅台
+            df_raw.loc[df_raw.index == '2018-10-29', ['Open', 'High', 'Low', 'Close']] = [534.82] * 4  # 贵州茅台数据错误 (少一个跌停板)
+            df_raw.loc[df_raw.index <= '2006-05-24', ['Open', 'High', 'Low', 'Close']] *= 23.75 / 27.86  # 贵州茅台数据错误（红利复权错误）
+        elif ticker == '600383.SS':   # 金地集团 数据错误 (少跌停板)
+            pass
+        elif ticker == '000651.SZ':   # 格力电器 数据错误 (少跌停板)
+            pass
+    else:
+        raise Exception('Source '+source+' not supported!')
+    return df_raw
+
+
+
 
 if __name__ == "__main__":
+    df_raw = get_history_data("^GSPC")  # sp500
+    df_raw = get_history_data("^IXIC")  # 纳斯达克
+    df_raw = get_history_data("^N225")  # 日经225
+    df_raw = get_history_data("^FTSE")  # 英国FTSE100指數
+    df_raw = get_history_data("000001.SS")  # 上证综指
+    df_raw = get_history_data("^HSI")       # 恒生指数
+    df_raw = get_history_data("399001.SZ")  # 深证成指
+    df_raw = get_history_data("600519.SS")  # 贵州茅台
+    df_raw = get_history_data("601318.SS")  # 中国平安
+    df_raw = get_history_data("600016.SS")  # 民生银行
+    # df_raw = get_history_data("600383.SS")  # 金地集团 数据错误 (少跌停板)
+    # df_raw = get_history_data("000651.SZ")  # 格力电器 数据错误 (少跌停板)
+    df_raw = get_history_data("TSLA").history(period="max")  # TSLA
 
-    df_raw = yf.Ticker("^GSPC").history(period="max")  # sp500
-    df_raw = yf.Ticker("^IXIC").history(period="max")  # 纳斯达克
-    df_raw = yf.Ticker("^N225").history(period="max")  # 日经225
-    df_raw = yf.Ticker("^FTSE").history(period="max")  # 英国FTSE100指數
-    df_raw = yf.Ticker("000001.SS").history(period="max")  # 上证综指
-    df_raw = yf.Ticker("^HSI").history(period="max")  # 恒生指数
-    df_raw = yf.Ticker("399001.SZ").history(period="max")  # 深证成指
-
-    df_raw = yf.Ticker("600519.SS").history(period="max")  # 贵州茅台
-    df_raw.loc[df_raw.index == '2018-10-29', ['Open', 'High', 'Low', 'Close']] = [534.82] * 4  # 贵州茅台数据错误 (少一个跌停板)
-    df_raw.loc[df_raw.index <= '2006-05-24', ['Open', 'High', 'Low', 'Close']] *= 23.75 / 27.86  # 贵州茅台数据错误（红利复权错误）
-
-    df_raw = yf.Ticker("601318.SS").history(period="max")  # 中国平安
-    df_raw = yf.Ticker("600016.SS").history(period="max")  # 民生银行
-    # df_raw = yf.Ticker("600383.SS").history(period="max")  # 金地集团 数据错误 (少跌停板)
-    # df_raw = yf.Ticker("000651.SZ").history(period="max")  # 格力电器 数据错误 (少跌停板)
-
-    df_raw = yf.Ticker("TSLA").history(period="max")  # TSLA
 
     # basic stats
     df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["Close"], plot=True, plot_max_freq=252)
@@ -575,7 +593,7 @@ if __name__ == "__main__":
 
     # advanced rebalance stats
     # .loc[df_raw.index >= "2010-01-01", "Close"]
-    df_rebal_stats = timeseries_advanced_rebalance_ana(ts_px_series=df_raw.loc[df_raw.index >= "2010-01-01", "Close"], rebal_freqs=[5,20,60],
+    df_rebal_stats = timeseries_advanced_rebalance_ana(ts_px_series=df_raw["Close"], rebal_freqs=[5, 20, 60],
                                                        rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
                                                        rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
                                                        riskfree_rate=0.03, plot=True)

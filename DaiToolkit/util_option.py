@@ -7,13 +7,15 @@ Created on Fri Oct  2 19:24:29 2020
 
 import math
 
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy as sp
 from scipy.stats import norm
 
 
 def option_bsm(stat, callput, spot, strike, maturity_years, vol, rate):
     """
-    price and stat for Eurpean option
+    price and stat for European option
     
     GOOGL
     option_BSM('gamma','c',1487.17,1320.0,0.411,0.2467,0.015)
@@ -92,18 +94,21 @@ def option_bsm_price(option_type, sigma, s, k, r, T, q):
         print('No such option type %s' % option_type)
 
 
-def option_implied_vol(option_type, option_price, s, k, r, T, q):
+def option_implied_vol(option_type, option_price, s, k, r, T, q, precision=None, max_vol=500, min_vol=0.000001):
     '''
     apply bisection method to get the implied volatility by solving the BSM function
+
+    precision: None (Auto set precision with given price input prec + 4 digit)
+    max_vol: 50000%
+    min_vol: 0.0001%
     '''
-    precision = 0.000001
-    upper_vol = 500.0
-    lower_vol = 0.0001
-    max_vol = 500.0
-    iteration = 0
+    upper_vol = max_vol
+    lower_vol = min_vol
+    vol_precision = 1e-10
+    if precision is None:
+        precision = 10 ** (-1 * (round(math.log10(1 / option_price)) + 4))
 
     while 1:
-        iteration += 1
         mid_vol = (upper_vol + lower_vol) / 2.0
         price = option_bsm_price(option_type, mid_vol, s, k, r, T, q)
         if option_type == 'c':
@@ -114,47 +119,110 @@ def option_implied_vol(option_type, option_price, s, k, r, T, q):
                 upper_vol = mid_vol
             if abs(price - option_price) < precision:
                 break
-            if mid_vol > max_vol - 5:
-                mid_vol = 0.000001
-                break
         elif option_type == 'p':
             upper_price = option_bsm_price(option_type, upper_vol, s, k, r, T, q)
-
             if (upper_price - option_price) * (price - option_price) > 0:
                 upper_vol = mid_vol
             else:
                 lower_vol = mid_vol
             if abs(price - option_price) < precision:
                 break
-            if iteration > 50:
-                break
+        if abs(mid_vol - min_vol) < vol_precision or abs(mid_vol - max_vol) < vol_precision:
+            print("Warning: option implied vol iteration hit boundary " + str(mid_vol))
+            break
 
     return mid_vol
 
 
-## SPXW
-if __name__ == "__main__":
-    pass
-    #    print("BSM func 1")
-    #    for stat in ['px','delta','gamma','vega','theta','rho']:
-    #        print stat +" : " +str(option_bsm(stat,'p',spot=3348.44,strike=3350,maturity_years=14/365.0,vol=0.2260,rate=0.008))
-    #
-    #    print("\nBSM func 2")
-    #    px = option_bsm_price(option_type='p',sigma=0.226, s=3348.44, k=3350, r=0.008, T=14/365.0, q=0)
-    #    print("Price 2: "+str(px))
-    #    print("imp vol: "+str(option_implied_vol(option_type='p', option_price=px, s=3348.44, k=3350, r=0.008, T=14/365.0, q=0)))
-    #
-    #    print("\nBSM func 2")
-    #    option_implied_vol(option_type='p', option_price=px, s=3348.44, k=3350, r=0.008, T=14/365.0, q=0)
+def gen_option_pxlist(k_list, sigma_list, option_type, s, r, T, q):
+    """
+    generate option px list from implied vol list (panel data)
 
-    print("苏银转债")
+    :param k_list:
+    :param sigma_list:
+    :return: BSM px list from k ~ implied vol list
+    """
+    opt_list = []
+    for k, sigma in zip(k_list, sigma_list):
+        opt_list.append(option_bsm_price(option_type=option_type, sigma=sigma, s=s, k=k, r=r, T=T, q=q))
+    return opt_list
+
+
+def option_tail_analysis(optpx_list, k_list, option_type, s, r, T, q, tail_alpha):
+    """
+    analyze option px ratio under powerlaw (mkt, fitted power law, historical power law)
+
+    :param optpx_list:
+    :param k_list:
+    :param option_type:
+    :param s:
+    :param r:
+    :param T:
+    :param q:
+    :return:
+    """
+    k_list_rescale = [x / s * 100 for x in k_list]
+    sigma_list = [option_implied_vol(option_type, p, s, k, r, T, q) for p, k in zip(optpx_list, k_list)]
+
+    # compare tail_alpha
+    opt_ratio_list = [x / max(optpx_list) for x in optpx_list]
+    theo_ratio_list = [(abs(100 - x) / 10) ** (1 - tail_alpha) for x in k_list_rescale]
+
+    # fit mkt implied alpha
+    def fit_err(k_list_rescale, opt_ratio_list, alpha):
+        theo_ratio_list = [(abs(100 - x) / 10) ** (1 - alpha) for x in k_list_rescale]
+        return sum([(x - y) ** 2 for x, y in zip(theo_ratio_list, opt_ratio_list)])
+
+    res = sp.optimize.minimize(lambda x: fit_err(k_list_rescale, opt_ratio_list, x), tail_alpha)
+    implied_alpha = res['x'][0]
+    imp_ratio_list = [(abs(100 - x) / 10) ** (1 - implied_alpha) for x in k_list_rescale]
+
+    fig, ((ax1, ax2)) = plt.subplots(2, 1)
+    fig.suptitle('Option Power Law Analysis')
+    ax1.plot(k_list_rescale, sigma_list, ls='-', marker='o', alpha=0.5, markersize=2, label='skewed vol')
+    ax1.grid(ls='--', alpha=0.4)
+    ax1.legend()
+    ax1.set_title("Option Implied Volatility Curve")
+
+    ax2.plot(k_list, opt_ratio_list, ls='-', marker='o', alpha=0.5, markersize=2, label='market price')
+    ax2.plot(k_list, imp_ratio_list, ls='-', marker='o', alpha=0.5, markersize=2, label='fitted (alpha=' + str(round(implied_alpha, 2)) + ')')
+    ax2.plot(k_list, theo_ratio_list, ls='-', marker='o', alpha=0.5, markersize=2, label='theoretical (alpha=' + str(round(tail_alpha, 2)) + ')')
+    ax2.grid(ls='--', alpha=0.4)
+    ax2.legend()
+    ax2.set_title("Option OTM Price Ratio")
+    plt.show()
+
+
+if __name__ == "__main__":
+    # test
+    print("BSM func 1 (SPXW)")
+    for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
+        print(stat + " : " + str(option_bsm(stat, 'p', spot=3348.44, strike=3350, maturity_years=14 / 365.0, vol=0.2260, rate=0.008)))
+
+    print("\nBSM func 2")
+    px = option_bsm_price(option_type='p', sigma=0.226, s=3348.44, k=2000, r=0.008, T=14 / 365.0, q=0)
+    print("Price 2: " + str(px))
+    print("imp vol: " + str(option_implied_vol(option_type='p', option_price=px, s=3348.44, k=2000, r=0.008, T=14 / 365.0, q=0)))
+
+    print("\nBSM func 2")
+    option_implied_vol(option_type='p', option_price=px, s=3348.44, k=3350, r=0.008, T=14 / 365.0, q=0)
+
+    print("\n苏银转债")
     for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
         print(stat + " : " + str(
             option_bsm(stat, 'c', spot=5.39, strike=6.69, maturity_years=4.21, vol=0.15, rate=0.02)))
 
-    print("GME")
+    print("\nGME")
     imp_vol = option_implied_vol("p", 0.78, 347.51, 3.0, 0.02, 0.8222, 0)
-    print("Implied Vol: "+str(imp_vol))
+    print("Implied Vol: " + str(imp_vol))
     for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
         print(stat + " : " + str(
             option_bsm(stat, 'p', spot=347.51, strike=3, maturity_years=0.8222, vol=imp_vol, rate=0.02)))
+
+    print("\nOption tail analysis (sample)")
+    spot_px = 100
+    k_list = np.arange(50, 90.01, 0.25)
+    sigma_list = [(100 - x) ** 2 * 0.02 / 100 + 0.25 for x in k_list]
+    optpx_list = gen_option_pxlist(k_list, sigma_list, option_type='p', s=spot_px, r=0.02, T=10 / 365, q=0)
+    option_tail_analysis(optpx_list, k_list, option_type='p', s=spot_px, r=0.02, T=10 / 365, q=0, tail_alpha=2.75)
+
