@@ -10,21 +10,12 @@ Created on Sat May 25 22:23:55 2019
 @author: Dai
 """
 
-import os
-import sys
-
-sys.path.append(os.path.abspath("C:/Users/Dai/Desktop/investment/__py__"))
-import toolkit as tk
-import pandas as pd
-import numpy as np
 from datetime import datetime
 
-# import matplotlib.pyplot as plt
-# plt.rcParams['font.sans-serif']=['SimHei'] #用来正常显示中文标签
-# from plotly import tools
-# import plotly.graph_objs as go
-# import plotly.offline as py
+import numpy as np
+import pandas as pd
 
+import DaiToolkit as tk
 
 ###########################################################
 ## 

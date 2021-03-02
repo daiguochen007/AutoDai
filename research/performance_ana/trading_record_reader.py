@@ -11,11 +11,10 @@ Created on Sat May 25 22:23:55 2019
 """
 
 import os
-import sys
 
-sys.path.append(os.path.abspath("C:/Users/Dai/Desktop/investment/__py__"))
-import toolkit as tk
 import pandas as pd
+
+import DaiToolkit as tk
 
 record_folder = tk.ROOT_PATH + "/股票/个人研究/交割单/"
 record_list = os.listdir(record_folder)

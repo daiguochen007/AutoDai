@@ -16,7 +16,7 @@ pro = ts.pro_api()
 def tushare_getallsec_basics():
     """
     全市场基本数据
-    auto save to folder
+    auto save to db
     
     这里的市盈率是动态市盈率
 
@@ -59,6 +59,7 @@ def tushare_getallsec_basics():
         "ALTER TABLE `auto_dai`.`allsecbasics_ashares` CHANGE COLUMN `代码` `代码` VARCHAR(20) NOT NULL ,ADD PRIMARY KEY (`代码`);;")
 
     print("A股股票列表更新完成，数据库更新日期[" + today_date + "]，总计记录" + str(len(df)) + "条")
+
 
 
 def tusharelocal_get_allsecnames():
@@ -176,6 +177,7 @@ def tusharelocal_get_secprofitdata(seccode, start, end):
     res = util_database.db_query(
         'select * from quarterlyearnings_ashares where date>="' + start_str + '" and date<="' + end_str + '" and code="' + seccode + '"')
     res = res.sort_values(by="date")
+
     return res
 
 
@@ -225,7 +227,8 @@ def tusharelocal_get_annual_EPS(seccode, today_date, annual_type="TTM"):
     """
     calculate last 1 year period eps sum, STATIC, DYNAMIC, TTM
     date_str: yyyymmdd
-    ex: tusharelocal_get_TTMEPS("600655","20180807")
+
+    ex: tusharelocal_get_annual_EPS('601601','20200501',annual_type="TTM")
     """
     if annual_type == "TTM":
         start, end = get_eps_yrqtr(today_date, annual_type="TTM")
@@ -255,6 +258,7 @@ def tusharelocal_get_annual_EPS(seccode, today_date, annual_type="TTM"):
     elif annual_type == "DYNAMIC":
         start, end = get_eps_yrqtr(today_date, annual_type="DYNAMIC")
         df = tusharelocal_get_secprofitdata(seccode, start, end)
+        df = df.fillna(float('nan'))
         if len(df) == 2:
             res = list(df["eps"])[1] - list(df["eps"])[0]
         elif len(df) == 1 and list(df["date"])[-1][-1] == "1":
@@ -266,18 +270,19 @@ def tusharelocal_get_annual_EPS(seccode, today_date, annual_type="TTM"):
 
 def tushare_getPE(seccode, start, end=None, plot=True):
     """
-    start='20090807'
-    end='20181222'
-    
-    warning: this get PE time series func has serval problems
+    seccode = "601601"
+    start='19900101'
+    end='20210303'
+    return df
+
+    warning: this get PE time series func has several deficits
     1. earnings change date not accurate
     2. recent earnings might missing
     3. price not dvd adjusted
     
-    only for approximite usage!
+    only for approxi usage!
     """
-    # seccode = "600383"
-    print("开始下载不复权数据...")
+    print("tushare_getPE: 下载不复权数据...")
     end = end if end != None else datetime.datetime.now().strftime("%Y%m%d")
     try:
         # 不复权
@@ -286,9 +291,9 @@ def tushare_getPE(seccode, start, end=None, plot=True):
         df.index = df["trade_date"]
         df = pd.DataFrame(df["close"])
         df.columns = ["Close_Raw"]
-    except:
-        print("股票代码错误!!!")
-        return None
+    except Exception as e:
+        print("tushare_getPE: "+str(e))
+        return pd.DataFrame()
 
     ########
     def mapdate(date):
@@ -307,7 +312,7 @@ def tushare_getPE(seccode, start, end=None, plot=True):
     dict_ttmeps = {x: tusharelocal_get_annual_EPS(seccode, x, annual_type="TTM") for x in set(df["map_date"])}
     dict_staticeps = {x: tusharelocal_get_annual_EPS(seccode, x, annual_type="STATIC") for x in set(df["map_date"])}
     dict_dynamiceps = {x: tusharelocal_get_annual_EPS(seccode, x, annual_type="DYNAMIC") for x in set(df["map_date"])}
-    print("不复权数据下载完毕! 开始计算PE时间序列...")
+    print("tushare_getPE: 不复权数据下载完毕! 开始计算PE时间序列...")
     df["EPS_TTM"] = [float(dict_ttmeps[ind]) for ind in df["map_date"]]
     df["PE_TTM"] = df["Close_Raw"] / df["EPS_TTM"]
     df["EPS_STATIC"] = [float(dict_staticeps[ind]) for ind in df["map_date"]]
@@ -335,34 +340,46 @@ def tushare_getPE(seccode, start, end=None, plot=True):
 def tushare_get_history(seccode):
     """
     下载历史数据：高开低收量（前复权），raw收盘价（不复权），PE/TTM，调整因子
+    seccode="601009"
     """
-    print(seccode + "---------------- [" + seccode + "] start downloading ---------------")
-    ts_code = seccode + ".SH" if seccode[0] == "6" else seccode + ".SZ"
+    print("----- [" + seccode + "] start downloading history -----")
+    if "." in seccode:
+        ts_code = seccode
+        raw_code = seccode.split('.')[0]
+    else:
+        ts_code = seccode + ".SH" if seccode[0] == "6" else seccode + ".SZ"
+        raw_code = seccode
+
     try:
-        df_PE = tushare_getPE(seccode, '19890101', end=None, plot=False)
+        df_sec_factor = pro.adj_factor(ts_code=ts_code, trade_date='')
+        df_sec_factor.index = pd.DatetimeIndex(df_sec_factor["trade_date"])
+    except:
+        df_sec_factor = pd.DataFrame(columns=["adj_factor"])
+
+    try:
+        df_PE = tushare_getPE(raw_code, '19890101', end=None, plot=False)
         print("开始下载前复权数据...")
         df_sec_qfq = ts.pro_bar(ts_code=ts_code, adj='qfq', start_date='19890101',
                                 end_date=datetime.datetime.now().strftime("%Y%m%d"))
         df_sec_qfq.index = pd.DatetimeIndex(df_sec_qfq["trade_date"])
-        print("开始下载调整因子数据...")
-        df_sec_factor = pro.adj_factor(ts_code=ts_code, trade_date='')
-        df_sec_factor.index = pd.DatetimeIndex(df_sec_factor["trade_date"])
 
         df_res = df_sec_qfq.merge(df_PE, left_index=True, right_index=True, how="left")
         df_res = df_res.merge(df_sec_factor[["adj_factor"]], left_index=True, right_index=True, how="left")
 
-        df_res.to_csv(PROJECT_DATA_TUSHARE_PATH + "/history/" + seccode + ".csv", index=False)
+        df_res.to_csv(PROJECT_DATA_TUSHARE_PATH + "/history/" + raw_code + ".csv", index=False)
     except:
-        print("下载出现错误！")
-    print("------------------ [" + seccode + "] finished! -----------------")
+        raise Exception("下载前复权错误！")
+    print("----- [" + seccode + "] finished! -----")
+    return df_res
 
 
 def tusharelocal_get_history(seccode):
     df = pd.read_csv(PROJECT_DATA_TUSHARE_PATH + "/history/" + seccode + ".csv")
     return df
 
+
 ################################ test
 if __name__ =="__main__":
     pass
     # tushare_getallsec_basics()
-    # tushare_get_history(seccode="601009")
+    # tushare_get_history(seccode="600383")
