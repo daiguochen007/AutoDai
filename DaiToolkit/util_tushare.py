@@ -233,6 +233,7 @@ def tusharelocal_get_annual_EPS(seccode, today_date, annual_type="TTM"):
     if annual_type == "TTM":
         start, end = get_eps_yrqtr(today_date, annual_type="TTM")
         df = tusharelocal_get_secprofitdata(seccode, start, end)
+        df = df.fillna(float('nan'))
         if len(df) < 4:
             return float("nan")
         elif len(df) == 4 and list(df["date"])[-1][-1] != "4":
@@ -250,6 +251,7 @@ def tusharelocal_get_annual_EPS(seccode, today_date, annual_type="TTM"):
     elif annual_type == "STATIC":
         start, end = get_eps_yrqtr(today_date, annual_type="STATIC")
         df = tusharelocal_get_secprofitdata(seccode, start, end)
+        df = df.fillna(float('nan'))
         if len(df) > 0:
             res = list(df["eps"])[-1]
         else:
@@ -367,8 +369,8 @@ def tushare_get_history(seccode):
         df_res = df_res.merge(df_sec_factor[["adj_factor"]], left_index=True, right_index=True, how="left")
 
         df_res.to_csv(PROJECT_DATA_TUSHARE_PATH + "/history/" + raw_code + ".csv", index=False)
-    except:
-        raise Exception("下载前复权错误！")
+    except Exception as e:
+        raise Exception("下载前复权错误:"+str(e))
     print("----- [" + seccode + "] finished! -----")
     return df_res
 
