@@ -58,7 +58,8 @@ ts_px = tk.get_history_data("600016.SH", source='tushare')  # 民生银行
 ts_px = tk.get_history_data("600383.SH", source='tushare')  # 金地集团
 ts_px = tk.get_history_data("600887.SH", source='tushare')  # 伊利股份
 ts_px = tk.get_history_data("000002.SZ", source='tushare')  # 万科A
-ts_px = tk.get_history_data("00700", source='akshare')      # 腾讯
+ts_px = tk.get_history_data("00700", source='local')        # 腾讯
+ts_px = tk.get_history_data("00966", source='local')        # 中国太平
 
 ##############################
 # analysis
@@ -70,15 +71,15 @@ df_stats = tk.timeseries_ret_distri_stats(ts_px=ts_px['close'], log_ret=True, pl
 df_tail_stat = tk.timeseries_tail_ana(ts_px["close"], freqs=["Weekly"], tail_level=0.05, plot=True)
 
 df_rebal = tk.timeseries_rebalance_ana(ts_px_series=ts_px['close'], rebal_freqs=[10],
-                                        rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
-                                        rebal_ratio=2, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
+                                        rebal_anchor="no rebalance", long_term_growth="implied",weight_bound=[-0.2,1.2],
+                                        rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
                                         riskfree_rate=0.03, plot=True)
 
 # relationship between vol spread and rebalance enhance return
 rebal_term_list = [5, 10, 20, 30, 60]
 df_rebal_ana = {t: {"vol spread": tk.timeseries_volsig_diff(ts_px['close'], 1, t, True)} for t in rebal_term_list}
 df = tk.timeseries_rebalance_ana(ts_px_series=ts_px['close'], rebal_freqs=rebal_term_list,
-                                  rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
+                                  rebal_anchor="fixed weight", long_term_growth="implied",weight_bound=[-0.2,1.2],
                                   rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
                                   riskfree_rate=0.03, plot=False)
 for t in rebal_term_list:

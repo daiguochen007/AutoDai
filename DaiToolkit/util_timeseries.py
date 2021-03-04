@@ -8,9 +8,9 @@ import yfinance as yf
 from pylab import mpl
 from sklearn import linear_model
 
-from DaiToolkit.util_akshare import akshare_get_history
+from DaiToolkit.util_akshare import akshare_get_history, aksharelocal_get_history
 from DaiToolkit.util_portfolio import perf_stats
-from DaiToolkit.util_tushare import tusharelocal_get_history, tushare_get_history
+from DaiToolkit.util_tushare import tushare_get_history, tusharelocal_get_history
 
 # mpl.rcParams['font.sans-serif'] = ['SimHei']
 mpl.rcParams['axes.unicode_minus'] = False  # 负号'-'显示方块的问题
@@ -290,7 +290,7 @@ def timeseries_var_ana(ts_px, days=[1, 5, 10, 20, 30], var_level=[0.995, 0.99, 0
 
 
 def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal_hurdle=0, rebal_type="mean reverse",
-                             rebal_anchor="no rebalance", rebal_anchor_long_term_growth="implied",
+                             rebal_anchor="no rebalance", weight_bound=[0,1],long_term_growth="implied",
                              start_posperc=0.5, riskfree_rate=0.03, plot=True):
     """
     single timeseries rebalance analysis -> within freq period -> lower pos when price up / higher when price down -> close out when period ends
@@ -303,8 +303,8 @@ def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal
     :param rebal_anchor: 'no rebalance': 再平衡到初始静态增长状态
                          'fixed weight': 再平衡到固定配比，如40-60
                          'long term': 再平衡到长期增长配比
-    :param rebal_anchor_long_term_growth: 'implied': 隐含长期增长率 (最终价格/初始价格，年化)
-                                           number: 0.05 假设年化增速5%
+    :param long_term_growth: 'implied': 隐含长期增长率 (最终价格/初始价格，年化)
+                              number: 0.05 假设年化增速5%
     :param rebal_freqs: list of n trading days
     :param rebal_hurdle: only rebalance if abs(today's return) > rebal_hurdle
     :param start_posperc: allocate % to asset in the beginning, rest invest in cash
@@ -319,6 +319,7 @@ def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal
         rebal_type_direction = 1
     else:
         raise Exception("rebal_type support 'mean reverse' and 'trend'")
+    w_min, w_max = weight_bound
 
     # rebalancing
     ts_px = pd.DataFrame(ts_px_series).dropna(how="any").copy()
@@ -332,10 +333,10 @@ def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal
     ts_px["port_nav_no_rebal"] = ts_px["pos_nav"] * start_posperc + ts_px["cash_nav"] * start_cashperc
     ts_px["no_rebal_pos_weight"] = ts_px["pos_nav"] * start_posperc / ts_px["port_nav_no_rebal"]
 
-    if rebal_anchor_long_term_growth == 'implied':
+    if long_term_growth == 'implied':
         compound_ret_daily = ts_px["pos_nav"][-1] ** (1 / ts_px['days_accrual'].sum())
     else:
-        compound_ret_daily = (1 + rebal_anchor_long_term_growth) ** (1 / 365)
+        compound_ret_daily = (1 + long_term_growth) ** (1 / 365)
     ts_px["pos_longterm_imp_nav"] = ts_px['days_accrual'].cumsum().apply(lambda x: compound_ret_daily ** x)
 
     for rf in rebal_freqs_str:
@@ -406,7 +407,7 @@ def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal
                     rebal_enhance_signal = 0
 
                 res[dt]["rebal_pos_weight" + rf] = origin_weight + rebal_type_direction * ts_px.loc[dt, "ret_1d"] * rebal_ratio_curr
-                res[dt]["rebal_pos_weight" + rf] = max(min(1, res[dt]["rebal_pos_weight" + rf]), 0)
+                res[dt]["rebal_pos_weight" + rf] = max(min(w_max, res[dt]["rebal_pos_weight" + rf]), w_min)
                 res[dt]["rebal_cash_weight" + rf] = 1 - res[dt]["rebal_pos_weight" + rf]
                 res[dt]["rebal_enhance_signal" + rf] = res[dtm1]["rebal_enhance_signal" + rf] + rebal_enhance_signal
 
@@ -487,7 +488,8 @@ def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal
 
 
 def timeseries_port_rebal_ana(df_port_secs, start_weight, rebal_freq=5, rebal_enhance_ratio=0.5,
-                              rebal_anchor="no rebalance", rebal_enhance_hurdle=0, longterm_growth="implied", plot=True):
+                              rebal_anchor="no rebalance", rebal_enhance_hurdle=0, weight_bound=[0, 1],
+                              longterm_growth="implied", plot=True):
     """
     组合再平衡分析 - 均值回复型再平衡增强，隔n日回到再平衡基准
 
@@ -499,6 +501,7 @@ def timeseries_port_rebal_ana(df_port_secs, start_weight, rebal_freq=5, rebal_en
                          'fixed weight': 再平衡到固定配比，如40-60
                          'long term': 再平衡到长期增长配比
     :param longterm_growth: 'fixed' or annualized [growth1, growth2...]
+    :param weight_bound: boundary when rebalancing
     :param plot: True/False
     :return: df_stats
     """
@@ -508,6 +511,7 @@ def timeseries_port_rebal_ana(df_port_secs, start_weight, rebal_freq=5, rebal_en
 
     sec_list = df_port_secs.columns
     rf = str(rebal_freq) + 'd'
+    w_min, w_max = weight_bound
 
     # rebalancing
     df_port_secs['date'] = df_port_secs.index
@@ -588,8 +592,8 @@ def timeseries_port_rebal_ana(df_port_secs, start_weight, rebal_freq=5, rebal_en
                 rebal_ratio_curr = 0
             new_weight = [x - rebal_ratio_curr * y for x, y in zip(origin_weight, curr_ret)]
             new_weight = [x / sum(new_weight) for x in new_weight]
-            # limit to 0-1
-            new_weight = [max(0, min(x, 1)) for x in new_weight]
+            # limit to weight constraint
+            new_weight = [max(w_min, min(x, w_max)) for x in new_weight]
             new_weight = [x / sum(new_weight) for x in new_weight]
 
             for sec, w in zip(sec_list, new_weight):
@@ -684,7 +688,10 @@ def get_history_data(security_id, source='tushare'):
     elif source == 'akshare':
         df_raw = akshare_get_history(security_id)
     elif source == 'local':
-        df_raw = tusharelocal_get_history(security_id.split(".")[0])
+        try:
+            df_raw = tusharelocal_get_history(security_id.split(".")[0])
+        except:
+            df_raw = aksharelocal_get_history(security_id)
     else:
         raise Exception('Source ' + source + ' not supported!')
     df_raw = df_raw.sort_index(ascending=True)
@@ -715,7 +722,7 @@ if __name__ == "__main__":
     # rebalance stats
     # .loc[df_raw.index >= "2010-01-01", "close"]
     df_rebal_stats = timeseries_rebalance_ana(ts_px_series=df_raw["close"], rebal_freqs=[5, 20, 60],
-                                              rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
+                                              rebal_anchor="fixed weight", long_term_growth="implied",
                                               rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
                                               riskfree_rate=0.03, plot=True)
     df_rebal_stats.to_clipboard()
