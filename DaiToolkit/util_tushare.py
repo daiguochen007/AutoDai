@@ -367,7 +367,6 @@ def tushare_get_history(seccode):
 
         df_res = df_sec_qfq.merge(df_PE, left_index=True, right_index=True, how="left")
         df_res = df_res.merge(df_sec_factor[["adj_factor"]], left_index=True, right_index=True, how="left")
-
         df_res.to_csv(PROJECT_DATA_TUSHARE_PATH + "/history/" + raw_code + ".csv", index=False)
     except Exception as e:
         raise Exception("下载前复权错误:"+str(e))
@@ -377,6 +376,8 @@ def tushare_get_history(seccode):
 
 def tusharelocal_get_history(seccode):
     df = pd.read_csv(PROJECT_DATA_TUSHARE_PATH + "/history/" + seccode + ".csv")
+    idx = df["trade_date"].apply(lambda x: str(x)[:4] + '/' + str(x)[4:6] + '/' + str(x)[6:])
+    df.index = pd.DatetimeIndex(idx)
     return df
 
 

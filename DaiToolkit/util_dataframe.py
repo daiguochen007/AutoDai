@@ -102,11 +102,15 @@ def df_strip_cols(df, columns=[]):
     return df
 
 
-def df_to_float(df, errors='ignore'):
+def df_to_numeric(df, columns=[], errors='ignore'):
     """
     errors: {'ignore', 'coerce'} coerce will return nan
     """
-    for c in df.columns:
+    if len(columns)==0:
+        cols = df.columns
+    else:
+        cols = columns
+    for c in cols:
         df[c] = pd.to_numeric(df[c], errors=errors, downcast='float')
     return df
 

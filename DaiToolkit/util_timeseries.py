@@ -8,6 +8,7 @@ import yfinance as yf
 from pylab import mpl
 from sklearn import linear_model
 
+from DaiToolkit.util_akshare import akshare_get_history
 from DaiToolkit.util_portfolio import perf_stats
 from DaiToolkit.util_tushare import tusharelocal_get_history, tushare_get_history
 
@@ -680,16 +681,10 @@ def get_history_data(security_id, source='tushare'):
             df_raw.loc[df_raw.index <= '2006-05-24', ['open', 'high', 'low', 'close']] *= 23.75 / 27.86  # 贵州茅台数据错误（红利复权错误）
     elif source == 'tushare':
         df_raw = tushare_get_history(security_id)
-        df_raw.index = pd.DatetimeIndex(df_raw["trade_date"])
+    elif source == 'akshare':
+        df_raw = akshare_get_history(security_id)
     elif source == 'local':
         df_raw = tusharelocal_get_history(security_id.split(".")[0])
-        idx = df_raw["trade_date"].apply(lambda x: str(x)[:4] + '/' + str(x)[4:6] + '/' + str(x)[6:])
-        df_raw.index = pd.DatetimeIndex(idx)
-    elif source == 'auto':
-        try:
-            df_raw = get_history_data(security_id, source='local')
-        except:
-            df_raw = get_history_data(security_id, source='tushare')
     else:
         raise Exception('Source ' + source + ' not supported!')
     df_raw = df_raw.sort_index(ascending=True)
@@ -720,7 +715,7 @@ if __name__ == "__main__":
     # rebalance stats
     # .loc[df_raw.index >= "2010-01-01", "close"]
     df_rebal_stats = timeseries_rebalance_ana(ts_px_series=df_raw["close"], rebal_freqs=[5, 20, 60],
-                                               rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
-                                               rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
-                                               riskfree_rate=0.03, plot=True)
+                                              rebal_anchor="fixed weight", rebal_anchor_long_term_growth="implied",
+                                              rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,
+                                              riskfree_rate=0.03, plot=True)
     df_rebal_stats.to_clipboard()
