@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Sep 20 02:16:11 2020
-
-@author: Dai
-"""
-
 import pandas as pd
 from sqlalchemy import create_engine
 

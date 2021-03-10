@@ -10,7 +10,7 @@ import re
 import win32com.client as win32
 from PIL import ImageGrab
 from PyPDF2 import PdfFileWriter, PdfFileReader
-
+import xlsxwriter
 
 def excel_colnum_str(n):
     """map column number to excel column letter"""
@@ -300,3 +300,34 @@ def excel_to_img(fn_excel, fn_image, page=None, _range=None):
                 print(e)
                 retries -= 1
                 if retries == 0: raise Exception('retried 100 times fail')
+
+
+def excel_quick_output(excel_path, df_list, pagename_list=[]):
+    """
+    quick output to excel from df list (only basic fmt, no number fmt)
+    when output:
+        index = False
+        header = True
+        startcol, startrow = 0,0
+    """
+    #step 1 output:
+    workbook = xlsxwriter.Workbook(excel_path)
+    if len(pagename_list)==0:
+        pagename_list = ["Sheet"+str(x) for x in range(1,len(df_list)+1)]
+    for df,pagename in zip(df_list,pagename_list):
+        worksheet = workbook.add_worksheet(pagename)
+        xlsxwriter_dftoExcel(df, worksheet, index=False, header=True, startcol=0, startrow=0)
+    workbook.close()
+
+    #step 2 fmt
+    excel = win32.DispatchEx('Excel.Application')
+    excel.Visible = False
+    wb = excel.Workbooks.Open(excel_path, ReadOnly='False')
+    for df,worksheet in zip(df_list,wb.Sheets):
+        excel_tbl_bscfmt(worksheet, df)
+        worksheet.Activate()
+        worksheet.Columns.AutoFit()
+    wb.Worksheets(pagename_list[0]).Activate()
+    wb.Close(True)
+
+    print("Generate excel with "+str(len(df_list))+" dataframes, output path: "+excel_path)
