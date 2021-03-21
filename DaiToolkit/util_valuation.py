@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     df_val_15y15p = dcf_analysis(security_info_list, n1=15, r=0.15)
     df_val_15y20p = dcf_analysis(security_info_list, n1=15, r=0.20)
-    df_val_10y15p = dcf_analysis(security_info_list, n1=15, r=0.15)
+    df_val_10y15p = dcf_analysis(security_info_list, n1=10, r=0.15)
     df_val_20y15p = dcf_analysis(security_info_list, n1=20, r=0.15)
     df_val_25y15p = dcf_analysis(security_info_list, n1=25, r=0.15)
 
