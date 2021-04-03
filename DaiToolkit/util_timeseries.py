@@ -68,7 +68,7 @@ def fit_distribution(num_list, dis_type="norm", plot=True, bins=100, title=None)
     return params
 
 
-def timeseries_fit_ret_distri(ts_px, freq="", dis_type="norm", plot=True, bins=100):
+def timeseries_fit_ret_distri(ts_px, freq=5, dis_type="norm", plot=True, bins=100):
     """
     fit return distribution from price timeseries
 
@@ -80,12 +80,12 @@ def timeseries_fit_ret_distri(ts_px, freq="", dis_type="norm", plot=True, bins=1
     :return:
     """
     rescales = {"Daily": 252, "Weekly": 52, "Monthly": 12, "Quarterly": 4, "Yearly": 1}
-    if freq != "D":
+    if type(freq) == str:
         ts_ret = ts_px / ts_px.shift(int(round(252 / rescales[freq]))) - 1.0
     else:
-        ts_ret = ts_px / ts_px.shift(1) - 1.0
+        ts_ret = ts_px / ts_px.shift(freq) - 1.0
     ts_ret = ts_ret.dropna(how="any")
-    return fit_distribution(ts_ret, dis_type=dis_type, plot=plot, bins=bins, title="Freq: " + freq)
+    return fit_distribution(ts_ret, dis_type=dis_type, plot=plot, bins=bins, title="Freq: " + str(freq))
 
 
 def timeseries_ret_distri_stats(ts_px, log_ret=True, plot=True, plot_max_freq=252):
@@ -150,6 +150,42 @@ def timeseries_ret_distri_stats(ts_px, log_ret=True, plot=True, plot_max_freq=25
     return stat_tbl
 
 
+def timeseries_ret_distri_stats_ndays(ts_px, ndays=[1, 5, 10, 20, 40, 60, 120], log_ret=True):
+    """
+    return 4 moments for each sample
+    skew/kurt are central moments / scale free
+
+    plot: plot moment - sampling graph
+
+    :param ts_px:pd.Series daily price
+    :return:df_tbl
+    """
+    stat_tbl = {str(x) + 'd': {} for x in ndays}
+    for nday in ndays:
+        ts_ret = ts_px / ts_px.shift(nday)
+        if log_ret:
+            ts_ret = ts_ret.apply(math.log)
+        else:
+            ts_ret = ts_ret - 1.0
+        ts_ret = ts_ret.dropna(how="any")
+        stat_tbl[str(nday) + 'd']["# Data Points"] = len(ts_ret)
+        stat_tbl[str(nday) + 'd']["Mean"] = ts_ret.mean()
+        stat_tbl[str(nday) + 'd']["Std"] = ts_ret.std()
+        stat_tbl[str(nday) + 'd']["Skew"] = ts_ret.skew()
+        stat_tbl[str(nday) + 'd']["Kurt"] = ts_ret.kurtosis()
+        stat_tbl[str(nday) + 'd']["Min"] = ts_ret.min()
+        stat_tbl[str(nday) + 'd']["Max"] = ts_ret.max()
+
+        # assume normal var randomize
+        stat_tbl[str(nday) + 'd']["FatTail:Tail Start"] = ts_ret.std() * math.sqrt(0.5 * (5 + math.sqrt(17)))
+        stat_tbl[str(nday) + 'd']["FatTail:Shoulder Start"] = ts_ret.std() * math.sqrt(0.5 * (5 - math.sqrt(17)))
+
+    stat_tbl = pd.DataFrame(stat_tbl)[[str(x) + 'd' for x in ndays]].T
+    stat_tbl = stat_tbl[["# Data Points", "Mean", "Std", "Skew", "Kurt", "Min", "Max", "FatTail:Tail Start", "FatTail:Shoulder Start"]]
+    stat_tbl.index = [x + " Ret" for x in stat_tbl.index]
+    return stat_tbl
+
+
 def timeseries_volsig_diff(ts_px, short_term=1, long_term=5, log_ret=True):
     """
     return short term annual vol - long term annual vol
@@ -178,7 +214,7 @@ def timeseries_tail_ana(ts_px, freqs=['Daily'], tail_level=0.001, plot=True):
     :param ts_px:
     :param freq: list of ['Daily',"Weekly","Monthly","Quarterly","Yearly"]
     :param tail_level: if <=1   perc of data points
-                       if  >1   num of data points
+                       if >1    num of data points
     :return:df_tail_stat
     """
     rescales = {"Daily": 252, "Weekly": 52, "Monthly": 12, "Quarterly": 4, "Yearly": 1}
@@ -245,6 +281,38 @@ def timeseries_tail_ana(ts_px, freqs=['Daily'], tail_level=0.001, plot=True):
     return res
 
 
+def timeseries_moment_rolling_ana(ts_px, ret_freq=5, rolling_window=252):
+    """
+    return rolling moments
+    """
+    ts_ret = ts_px / ts_px.shift(ret_freq) - 1.0
+    ts_ret = ts_ret.dropna(how="any")
+
+    ts_1m = ts_ret.rolling(rolling_window).mean()
+    ts_2m = ts_ret.rolling(rolling_window).std()
+    ts_3m = ts_ret.rolling(rolling_window).skew()
+    ts_4m = ts_ret.rolling(rolling_window).apply(scipy.stats.kurtosis)
+
+    fig, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(5, sharex=True)
+    fig.suptitle(str(ret_freq) + 'd Return Rolling 1-4 Moments (Window=' + str(rolling_window) + 'd)')
+    ax0.plot(ts_px, color='black')
+    ax0.set_title("Performance")
+    ax0.grid(ls='--', alpha=0.5)
+    ax1.plot(ts_1m, color='grey')
+    ax1.grid(ls='--', alpha=0.5)
+    ax1.set_title("Mean")
+    ax2.plot(ts_2m)
+    ax2.grid(ls='--', alpha=0.5)
+    ax2.set_title("Std")
+    ax3.plot(ts_3m, color='darkgreen')
+    ax3.grid(ls='--', alpha=0.5)
+    ax3.set_title("Skew")
+    ax4.plot(ts_4m, color='orange')
+    ax4.grid(ls='--', alpha=0.5)
+    ax4.set_title("Kurt")
+    plt.show()
+
+
 def timeseries_var_ana(ts_px, days=[1, 5, 10, 20, 30], var_level=[0.995, 0.99, 0.95]):
     """
     return VAR/CVAR analysis
@@ -290,7 +358,7 @@ def timeseries_var_ana(ts_px, days=[1, 5, 10, 20, 30], var_level=[0.995, 0.99, 0
 
 
 def timeseries_rebalance_ana(ts_px_series, rebal_freqs=[5], rebal_ratio=1, rebal_hurdle=0, rebal_type="mean reverse",
-                             rebal_anchor="no rebalance", weight_bound=[0,1],long_term_growth="implied",
+                             rebal_anchor="no rebalance", weight_bound=[0, 1], long_term_growth="implied",
                              start_posperc=0.5, riskfree_rate=0.03, plot=True):
     """
     single timeseries rebalance analysis -> within freq period -> lower pos when price up / higher when price down -> close out when period ends
@@ -673,7 +741,7 @@ def timeseries_port_rebal_ana(df_port_secs, start_weight, rebal_freq=5, rebal_en
     return df_stats
 
 
-def get_history_data(security_id, source='tushare'):
+def get_history_data(security_id, source='tushare', market=None):
     '''
     return daily ohlc data, some need adjustments
     '''
@@ -686,12 +754,12 @@ def get_history_data(security_id, source='tushare'):
     elif source == 'tushare':
         df_raw = tushare_get_history(security_id)
     elif source == 'akshare':
-        df_raw = akshare_get_history(security_id)
+        df_raw = akshare_get_history(security_id, market=market, adjust='qfq')
     elif source == 'local':
         try:
             df_raw = tusharelocal_get_history(security_id.split(".")[0])
         except:
-            df_raw = aksharelocal_get_history(security_id)
+            df_raw = aksharelocal_get_history(security_id, market)
     else:
         raise Exception('Source ' + source + ' not supported!')
     df_raw = df_raw.sort_index(ascending=True)
@@ -708,19 +776,30 @@ if __name__ == "__main__":
     df_raw = get_history_data("^HSI", source='yahoo')  # 恒生指数
     df_raw = get_history_data("399001.SZ", source='yahoo')  # 深证成指
 
+    df_raw = get_history_data("sh000016", source='akshare', market='INDEX')  # 上证50
+    df_raw = get_history_data("sh000300", source='akshare', market='INDEX')  # 沪深300
+
     # basic stats
-    df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["close"], log_ret=True, plot=True, plot_max_freq=252)
+    df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["close"], log_ret=False, plot=True, plot_max_freq=252)
+    df_basic_stats = timeseries_ret_distri_stats_ndays(ts_px=df_raw["close"], ndays=[1, 5, 10, 20, 40, 60, 120], log_ret=False)
     df_basic_stats.to_clipboard()
+
     # ret distribution
-    fit_params = timeseries_fit_ret_distri(df_raw["close"], freq="Daily", dis_type="t", plot=True, bins=300)
+    fit_params = timeseries_fit_ret_distri(df_raw["close"], freq="Weekly", dis_type="norm", plot=True, bins=300)
+    fit_params = timeseries_fit_ret_distri(df_raw["close"], freq=40, dis_type="norm", plot=True, bins=300)
+
     # tail stats
-    df_tail_stat = timeseries_tail_ana(df_raw["close"], freqs=['Daily', "Weekly", "Monthly", "Quarterly", "Yearly"], tail_level=5, plot=True)
+    df_tail_stat = timeseries_tail_ana(df_raw["close"], freqs=['Daily', "Weekly", "Monthly", "Quarterly", "Yearly"], tail_level=0.01, plot=True)
     df_tail_stat.to_clipboard()
+
     # var stats
-    df_var_stat = timeseries_var_ana(df_raw["close"], days=[1, 5, 10, 20, 30, 60, 252], var_level=[0.995, 0.99])
+    df_var_stat = timeseries_var_ana(df_raw["close"], days=[1, 5, 10, 20, 40, 60, 120], var_level=[0.995, 0.99])
     df_var_stat.to_clipboard()
+
+    #rolling moments
+    timeseries_moment_rolling_ana(df_raw["close"],ret_freq=20, rolling_window=1000)
+    
     # rebalance stats
-    # .loc[df_raw.index >= "2010-01-01", "close"]
     df_rebal_stats = timeseries_rebalance_ana(ts_px_series=df_raw["close"], rebal_freqs=[5, 20, 60],
                                               rebal_anchor="fixed weight", long_term_growth="implied",
                                               rebal_ratio=0.5, rebal_type="mean reverse", rebal_hurdle=0.0, start_posperc=0.5,

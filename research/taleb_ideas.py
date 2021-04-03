@@ -17,7 +17,8 @@ x = [0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20, 25, 30, 35, 40, 
      250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000,
      1500, 2000, 2500, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
 y_list = []
-y_list.append(sta.norm.sf(x))
+y_list.append(sta.norm.sf(x, loc=0, scale=1))
+#y_list.append(sta.norm.sf(x, loc=0, scale=3))
 y_list.append(sta.expon.sf(x))
 y_list.append(sta.lognorm.sf(x, 1))
 y_list.append(sta.t.sf(x, 2))
@@ -41,7 +42,8 @@ plt.legend()
 x = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 10]
 x = [-1 * m for m in x[::-1]] + x
 y_list = []
-y_list.append(sta.norm.pdf(x))
+y_list.append(sta.norm.pdf(x, loc=0, scale=1))
+#y_list.append(sta.norm.pdf(x, loc=0, scale=3))
 y_list.append(sta.expon.pdf(x))
 y_list.append(sta.lognorm.pdf(x, 1))
 y_list.append(sta.t.pdf(x, 2))

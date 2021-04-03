@@ -166,16 +166,25 @@ def option_tail_analysis(optpx_list, k_list, option_type, s, r, T, q, tail_alpha
 
     # compare tail_alpha
     opt_ratio_list = [x / max(optpx_list) for x in optpx_list]
-    theo_ratio_list = [(abs(100 - x) / 10) ** (1 - tail_alpha) for x in k_list_rescale]
+    if option_type == 'p':
+        theo_ratio_list = [((100 - x) / (100 - max(k_list_rescale))) ** (1 - tail_alpha) for x in k_list_rescale]
+    else:
+        theo_ratio_list = [((100 - x) / (100 - min(k_list_rescale))) ** (1 - tail_alpha) for x in k_list_rescale]
 
     # fit mkt implied alpha
     def fit_err(k_list_rescale, opt_ratio_list, alpha):
-        theo_ratio_list = [(abs(100 - x) / 10) ** (1 - alpha) for x in k_list_rescale]
+        if option_type == 'p':
+            theo_ratio_list = [((100 - x) / (100 - max(k_list_rescale))) ** (1 - alpha) for x in k_list_rescale]
+        else:
+            theo_ratio_list = [((100 - x) / (100 - min(k_list_rescale))) ** (1 - alpha) for x in k_list_rescale]
         return sum([(x - y) ** 2 for x, y in zip(theo_ratio_list, opt_ratio_list)])
 
     res = sp.optimize.minimize(lambda x: fit_err(k_list_rescale, opt_ratio_list, x), tail_alpha)
     implied_alpha = res['x'][0]
-    imp_ratio_list = [(abs(100 - x) / 10) ** (1 - implied_alpha) for x in k_list_rescale]
+    if option_type == 'p':
+        imp_ratio_list = [((100 - x) / (100 - max(k_list_rescale))) ** (1 - implied_alpha) for x in k_list_rescale]
+    else:
+        imp_ratio_list = [((100 - x) / (100 - min(k_list_rescale))) ** (1 - implied_alpha) for x in k_list_rescale]
 
     fig, ((ax1, ax2)) = plt.subplots(2, 1)
     fig.suptitle('Option Power Law Analysis')
@@ -191,6 +200,7 @@ def option_tail_analysis(optpx_list, k_list, option_type, s, r, T, q, tail_alpha
     ax2.legend()
     ax2.set_title("Option OTM Price Ratio")
     plt.show()
+
 
 
 if __name__ == "__main__":
@@ -221,8 +231,25 @@ if __name__ == "__main__":
 
     print("\nOption tail analysis (sample)")
     spot_px = 100
-    k_list = np.arange(50, 90.01, 0.25)
-    sigma_list = [(100 - x) ** 2 * 0.02 / 100 + 0.25 for x in k_list]
-    optpx_list = gen_option_pxlist(k_list, sigma_list, option_type='p', s=spot_px, r=0.02, T=10 / 365, q=0)
-    option_tail_analysis(optpx_list, k_list, option_type='p', s=spot_px, r=0.02, T=10 / 365, q=0, tail_alpha=2.75)
+    r = 0.02
+    T = 30/365
+    q = 0
+    k_list = np.arange(80, 97.01, 0.25)
+    sigma_list = [(100 - x) ** 2 * 0.035 / 100 + 0.16 for x in k_list]
+    optpx_list = gen_option_pxlist(k_list, sigma_list, option_type='p', s=spot_px, r=r, T=T, q=q)
+    option_tail_analysis(optpx_list, k_list, option_type='p', s=spot_px, r=r, T=T, q=q, tail_alpha=3)
 
+    option_bsm('theta', 'p', spot=100, strike=90, maturity_years=30 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('theta', 'p', spot=100, strike=97, maturity_years=30 / 365.0, vol=0.18, rate=0.03)
+    option_bsm('theta', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
+    option_bsm('theta', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('theta', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('theta', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
+    
+    option_bsm('vega', 'p', spot=100, strike=90, maturity_years=30 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=30 / 365.0, vol=0.18, rate=0.03)
+    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
+    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('vega', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
+    option_bsm('vega', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
