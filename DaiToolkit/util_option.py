@@ -237,7 +237,7 @@ if __name__ == "__main__":
     k_list = np.arange(80, 97.01, 0.25)
     sigma_list = [(100 - x) ** 2 * 0.035 / 100 + 0.16 for x in k_list]
     optpx_list = gen_option_pxlist(k_list, sigma_list, option_type='p', s=spot_px, r=r, T=T, q=q)
-    option_tail_analysis(optpx_list, k_list, option_type='p', s=spot_px, r=r, T=T, q=q, tail_alpha=3)
+    option_tail_analysis(optpx_list, k_list, option_type='p', s=spot_px, r=r, T=T, q=q, tail_alpha=4.6)
 
     option_bsm('theta', 'p', spot=100, strike=90, maturity_years=30 / 365.0, vol=0.25, rate=0.03)
     option_bsm('theta', 'p', spot=100, strike=97, maturity_years=30 / 365.0, vol=0.18, rate=0.03)

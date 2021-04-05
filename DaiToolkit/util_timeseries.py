@@ -207,9 +207,9 @@ def timeseries_volsig_diff(ts_px, short_term=1, long_term=5, log_ret=True):
     return ts_ret_s.std() * math.sqrt(252 / short_term) - ts_ret_l.std() * math.sqrt(252 / long_term)
 
 
-def timeseries_tail_ana(ts_px, freqs=['Daily'], tail_level=0.001, plot=True):
+def timeseries_tail_ana_regular(ts_px, freqs=['Daily'], tail_level=0.001, plot=True):
     """
-    return
+    return tail analysis
 
     :param ts_px:
     :param freq: list of ['Daily',"Weekly","Monthly","Quarterly","Yearly"]
@@ -278,6 +278,82 @@ def timeseries_tail_ana(ts_px, freqs=['Daily'], tail_level=0.001, plot=True):
                      'left_tail_volatility(Annualized)': tail_vol_l * math.sqrt(rescales[freq]),
                      'right_tail_volatility(Annualized)': tail_vol_r * math.sqrt(rescales[freq])}
     res = pd.DataFrame(res)
+    return res
+
+
+def timeseries_tail_ana(ts_px, ret_freq=5, tail_start=None, plot=True):
+    """
+    return tail analysis
+
+    :param ts_px:
+    :param freq: list of ['Daily',"Weekly","Monthly","Quarterly","Yearly"]
+    :param tail_level: if <=1   perc of data points
+                       if >1    num of data points
+    :return:df_tail_stat
+    """
+    ts_ret = ts_px / ts_px.shift(ret_freq) - 1.0
+    ts_ret = ts_ret.dropna(how="any")
+
+    df_righttail = pd.DataFrame(sorted(ts_ret[ts_ret > 0].values), columns=["ret"])
+    df_lefttail = pd.DataFrame(sorted(ts_ret[ts_ret < 0].values * -1), columns=["ret"])
+
+    def fit_tail_distri(df_tail, tail_filter):
+        tail_vol = np.std(df_tail["ret"].to_list() + (df_tail["ret"] * -1).to_list())
+        if tail_filter is None:
+            tail_filter = tail_vol * math.sqrt(0.5 * (5 + math.sqrt(17)))
+
+        df_tail["p"] = [1.0 - float(m) / (len(df_tail) + 1) for m in df_tail.index]
+        df_tail["ret_log"] = df_tail["ret"].apply(math.log)
+        df_tail["p_log"] = df_tail["p"].apply(lambda x: math.log(x) if x > 0 else float("nan"))
+
+        df_tail['norm_p'] = [(1 - scipy.stats.norm.cdf(x, loc=0, scale=tail_vol)) * 2 for x in df_tail["ret"]]
+        df_tail['norm_p_log'] = df_tail["norm_p"].apply(
+            lambda x: float("nan") if x == 0 else math.log(x) if math.log(x) >= df_tail["p_log"].min() else float(
+                "nan"))
+
+        df_tail["tail_tag"] = [True if x >= tail_filter else False for x in df_tail["ret"]]
+        lm_x = df_tail.loc[df_tail["tail_tag"], "ret_log"].values
+        lm_y = df_tail.loc[df_tail["tail_tag"], "p_log"].values
+        lm = linear_model.LinearRegression()
+        lm.fit([[m] for m in lm_x], lm_y)
+        tail_alpha = lm.coef_[0]
+        lm_y_pred = lm.predict([[m] for m in lm_x])
+        return [lm_x, lm_y_pred, tail_alpha, tail_vol, tail_filter]
+
+    lm_x_r, lm_y_pred_r, tail_alpha_r, tail_vol_r, tail_start_r = fit_tail_distri(df_righttail, tail_start)
+    lm_x_l, lm_y_pred_l, tail_alpha_l, tail_vol_l, tail_start_l = fit_tail_distri(df_lefttail, tail_start)
+
+    if plot:
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        fig.suptitle(str(ret_freq) + 'd Return Tail Analysis')
+        ax1.plot(df_lefttail["ret_log"].values, df_lefttail["p_log"].values, ls='-', marker='o', alpha=0.3,
+                 markersize=2, label='actual')
+        ax1.plot(df_lefttail["ret_log"].values, df_lefttail["norm_p_log"].values, ls='-', alpha=0.5, label='norm')
+        ax1.plot(lm_x_l, lm_y_pred_l, ls='-', alpha=0.8, label='power law fit')
+        ax1.legend()
+        ax1.set_title("Left Tail (Alpha = " + str(round(tail_alpha_l, 2)) + ")")
+        ax2.plot(df_righttail["ret_log"].values, df_righttail["p_log"].values, ls='-', marker='o', alpha=0.3,
+                 markersize=2, label='actual')
+        ax2.plot(df_righttail["ret_log"].values, df_righttail["norm_p_log"].values, ls='-', alpha=0.5, label='norm')
+        ax2.plot(lm_x_r, lm_y_pred_r, ls='-', alpha=0.8, label='power law fit')
+        ax2.legend()
+        ax2.set_title("Right Tail (Alpha = " + str(round(tail_alpha_r, 2)) + ")")
+        plt.show()
+
+    res = {'left_tail_alpha': tail_alpha_l,
+           'right_tail_alpha': tail_alpha_r,
+           '#dp_left_tail': len(df_lefttail),
+           '#dp_right_tail': len(df_righttail),
+           '#dp_fit_left_tail_alpha': len(lm_x_l),
+           '#dp_fit_right_tail_alpha': len(lm_x_r),
+           'left_tail_vol': tail_vol_l,
+           'right_tail_vol': tail_vol_r,
+           'left_tail_vol_ann': tail_vol_l * math.sqrt(252 / ret_freq),
+           'right_tail_vol_ann': tail_vol_r * math.sqrt(252 / ret_freq),
+           'left_tail_start': tail_start_l,
+           'right_tail_start': tail_start_r,
+           }
+    res = pd.DataFrame(res, index=[str(ret_freq) + 'd Ret']).T
     return res
 
 
@@ -779,26 +855,34 @@ if __name__ == "__main__":
     df_raw = get_history_data("sh000016", source='akshare', market='INDEX')  # 上证50
     df_raw = get_history_data("sh000300", source='akshare', market='INDEX')  # 沪深300
 
+    df_raw = pd.read_excel('C:/Users/Dai/Desktop/investment/data/crypto/BTC.xlsx', 'BTC')  # BTC
+    df_raw.columns = [x.lower() for x in df_raw.columns]
+    df_raw.index = df_raw['Date']
+
     # basic stats
     df_basic_stats = timeseries_ret_distri_stats(ts_px=df_raw["close"], log_ret=False, plot=True, plot_max_freq=252)
     df_basic_stats = timeseries_ret_distri_stats_ndays(ts_px=df_raw["close"], ndays=[1, 5, 10, 20, 40, 60, 120], log_ret=False)
     df_basic_stats.to_clipboard()
 
     # ret distribution
-    fit_params = timeseries_fit_ret_distri(df_raw["close"], freq="Weekly", dis_type="norm", plot=True, bins=300)
+    # fit_params = timeseries_fit_ret_distri(df_raw["close"], freq="Weekly", dis_type="norm", plot=True, bins=300)
     fit_params = timeseries_fit_ret_distri(df_raw["close"], freq=40, dis_type="norm", plot=True, bins=300)
 
     # tail stats
-    df_tail_stat = timeseries_tail_ana(df_raw["close"], freqs=['Daily', "Weekly", "Monthly", "Quarterly", "Yearly"], tail_level=0.01, plot=True)
-    df_tail_stat.to_clipboard()
+    df_tail = timeseries_tail_ana(df_raw["close"], ret_freq=5, tail_start=None, plot=True)
+
+    df_tail_stat = pd.DataFrame()
+    for i in range(1, 41, 1):
+        df_tail_stat = pd.concat([df_tail_stat, timeseries_tail_ana(df_raw["close"], ret_freq=i, tail_start=None, plot=False).T], axis=0)
+        print('tail ana ' + str(i) + 'd finished')
 
     # var stats
     df_var_stat = timeseries_var_ana(df_raw["close"], days=[1, 5, 10, 20, 40, 60, 120], var_level=[0.995, 0.99])
     df_var_stat.to_clipboard()
 
-    #rolling moments
-    timeseries_moment_rolling_ana(df_raw["close"],ret_freq=20, rolling_window=1000)
-    
+    # rolling moments
+    timeseries_moment_rolling_ana(df_raw["close"], ret_freq=20, rolling_window=1000)
+
     # rebalance stats
     df_rebal_stats = timeseries_rebalance_ana(ts_px_series=df_raw["close"], rebal_freqs=[5, 20, 60],
                                               rebal_anchor="fixed weight", long_term_growth="implied",
