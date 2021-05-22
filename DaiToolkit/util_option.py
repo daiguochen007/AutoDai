@@ -10,6 +10,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
+import pandas as pd
 from scipy.stats import norm
 
 
@@ -205,6 +206,7 @@ def option_tail_analysis(optpx_list, k_list, option_type, s, r, T, q, tail_alpha
 
 if __name__ == "__main__":
     # test
+    pass
     print("BSM func 1 (SPXW)")
     for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
         print(stat + " : " + str(option_bsm(stat, 'p', spot=3348.44, strike=3350, maturity_years=14 / 365.0, vol=0.2260, rate=0.008)))
@@ -228,28 +230,3 @@ if __name__ == "__main__":
     for stat in ['px', 'delta', 'gamma', 'vega', 'theta', 'rho']:
         print(stat + " : " + str(
             option_bsm(stat, 'p', spot=347.51, strike=3, maturity_years=0.8222, vol=imp_vol, rate=0.02)))
-
-    print("\nOption tail analysis (sample)")
-    spot_px = 100
-    r = 0.02
-    T = 30/365
-    q = 0
-    k_list = np.arange(80, 97.01, 0.25)
-    sigma_list = [(100 - x) ** 2 * 0.035 / 100 + 0.16 for x in k_list]
-    optpx_list = gen_option_pxlist(k_list, sigma_list, option_type='p', s=spot_px, r=r, T=T, q=q)
-    option_tail_analysis(optpx_list, k_list, option_type='p', s=spot_px, r=r, T=T, q=q, tail_alpha=4.6)
-
-    option_bsm('theta', 'p', spot=100, strike=90, maturity_years=30 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('theta', 'p', spot=100, strike=97, maturity_years=30 / 365.0, vol=0.18, rate=0.03)
-    option_bsm('theta', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
-    option_bsm('theta', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('theta', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('theta', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
-    
-    option_bsm('vega', 'p', spot=100, strike=90, maturity_years=30 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=30 / 365.0, vol=0.18, rate=0.03)
-    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
-    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('vega', 'p', spot=100, strike=97, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('vega', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.25, rate=0.03)
-    option_bsm('vega', 'p', spot=100, strike=90, maturity_years=180 / 365.0, vol=0.18, rate=0.03)
