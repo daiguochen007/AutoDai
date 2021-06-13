@@ -28,7 +28,8 @@ if __name__ == "__main__":
                 'tushare',
                 'PyPDF2',
                 'selenium',
-                'yfinance']
+                'yfinance',
+                'windnd']
 
     for pkg_name in pkg_list:
         pass

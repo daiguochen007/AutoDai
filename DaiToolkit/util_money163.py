@@ -937,7 +937,7 @@ def download_finfdtml_excel(seccode, secname, dir_path):
     for worksheet in wb.Sheets:
         if worksheet.Name == "资产负债表":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["zcfzb"])
-            # worksheet.Range("B2:B9").NumberFormat = "#,##0;[Red](#,##0)"
+            worksheet.Range("B:ZZ").NumberFormat = "#,##0;[红色](#,##0)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
@@ -947,7 +947,8 @@ def download_finfdtml_excel(seccode, secname, dir_path):
 
         if worksheet.Name == "利润表":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["lrb"])
-            # worksheet.Range("B2:B9").NumberFormat = u"#,##0;[Red](#,##0)"
+            worksheet.Range("B:ZZ").NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range(str(len(df_res["lrb"])+1)+":"+str(len(df_res["lrb"])+1)).NumberFormat = "#,##0.00;[红色](#,##0.00)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
@@ -957,6 +958,7 @@ def download_finfdtml_excel(seccode, secname, dir_path):
 
         if worksheet.Name == "现金流量表":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["xjllb"])
+            worksheet.Range("B:ZZ").NumberFormat = "#,##0;[红色](#,##0)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
@@ -966,6 +968,9 @@ def download_finfdtml_excel(seccode, secname, dir_path):
 
         if worksheet.Name == "杜邦分析":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["dbfx"])
+            worksheet.Range("B:ZZ").NumberFormat = "0.00%;[红色](0.00%)"
+            worksheet.Range("6:7,9:10,15:16").NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("13:13").NumberFormat = "0.00;[红色](#,##0.00)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
@@ -976,25 +981,38 @@ def download_finfdtml_excel(seccode, secname, dir_path):
                                         startrow=len(df_res["zcfzbfx"]["tbl_ts"]) + 2)
             util_excel.excel_tbl_bscfmt(worksheet, df_res["zcfzbfx"]["tbl_liability"], index=False, startcol=5,
                                         startrow=len(df_res["zcfzbfx"]["tbl_ts"]) + 2)
+            worksheet.Range("B2:ZZ" + str(len(df_res["zcfzbfx"]["tbl_ts"])+1)).NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("40:41").NumberFormat = "0.00%;[红色](0.00%)"
+            worksheet.Range("2:2,21:21").NumberFormat = "0.00;[红色](#,##0.00)"
+
+            worksheet.Range("C"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 3)+":C"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 100)).NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("H"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 3)+":H"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 100)).NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("D"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 3)+":D"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 100)).NumberFormat = "0.00%;[红色](0.00%)"
+            worksheet.Range("I"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 3)+":I"+str(len(df_res["zcfzbfx"]["tbl_ts"]) + 100)).NumberFormat = "0.00%;[红色](0.00%)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
 
         if worksheet.Name == "利润表分析":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["lrbfx"])
+            worksheet.Range("B:ZZ").NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("2:2,5:5,12:15,18:18,21:21,24:24,36:36").NumberFormat = "0.00%;[红色](0.00%)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
 
         if worksheet.Name == "现金流量表分析":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["xjllbfx"])
+            worksheet.Range("B:ZZ").NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("5:5,8:8,11:11,14:14,17:17").NumberFormat = "0.00%;[红色](0.00%)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
 
         if worksheet.Name == "分红分析":
             util_excel.excel_tbl_bscfmt(worksheet, df_res["dvdfx"], index=True)
-            # worksheet.Range("B:C").NumberFormat = "#,##0;[Red](#,##0)"
+            worksheet.Range("B:C").NumberFormat = "#,##0;[红色](#,##0)"
+            worksheet.Range("D:I").NumberFormat = "0.00%;[红色](0.00%)"
             worksheet.Activate()
             excel.ActiveWindow.Zoom = 90
             worksheet.Columns.AutoFit()
